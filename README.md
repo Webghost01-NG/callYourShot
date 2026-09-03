@@ -30,6 +30,20 @@ Work is tracked in [GitHub Issues](https://github.com/Webghost01-NG/callYourShot
 See [the product brief](docs/PRODUCT.md), [engineering workflow](docs/ENGINEERING.md),
 and [delivery roadmap](docs/ROADMAP.md) before contributing.
 
+## DreamDEX validation harness
+
+Issue #2 includes a local, wallet-controlled harness for reproducing testnet
+order, complete-set, and redemption checks:
+
+```bash
+npm install
+npm run validate:dreamdex
+```
+
+Open `http://127.0.0.1:4173`. The harness never receives a private key: it
+prepares runtime-discovered transactions and the injected browser wallet signs
+each transaction after showing it to the owner.
+
 ## Repository policy
 
 - Never work directly on `main`.

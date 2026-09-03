@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DreamDEX transaction validation</title>
+  </head>
+  <body>
+    <main>
+      <h1>DreamDEX transaction validation</h1>
+      <p>
+        This local tool discovers a live BTC market and prepares a one-contract
+        IOC order. Your wallet remains in control of every transaction.
+      </p>
+      <button id="prepare" type="button">Connect wallet and prepare order</button>
+      <button id="execute" type="button" disabled>Review and sign transactions</button>
+      <hr>
+      <h2>Guaranteed redemption test</h2>
+      <button id="mint-set" type="button">Prepare complete set</button>
+      <button id="redeem" type="button">Redeem winner after settlement</button>
+      <pre id="output" aria-live="polite">No transaction prepared.</pre>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

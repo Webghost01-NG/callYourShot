@@ -1,0 +1,14 @@
+{
+  "name": "call-your-shot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A social prediction league powered by DreamDEX Event Contracts.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "validate:dreamdex": "node scripts/dreamdex-validation-server.mjs"
+  },
+  "dependencies": {
+    "@somnia-chain/markets-sdk": "0.29.0",
+    "viem": "2.56.3"
+  }
+}
