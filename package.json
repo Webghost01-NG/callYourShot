@@ -2,13 +2,23 @@
   "name": "call-your-shot",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "A social prediction league powered by DreamDEX Event Contracts.",
   "license": "UNLICENSED",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check:live": "tsx scripts/check-live-core.ts",
+    "test": "node --import tsx --test tests/**/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "validate:dreamdex": "node scripts/dreamdex-validation-server.mjs"
   },
   "dependencies": {
     "@somnia-chain/markets-sdk": "0.29.0",
     "viem": "2.56.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2"
   }
 }

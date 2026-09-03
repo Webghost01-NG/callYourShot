@@ -19,6 +19,10 @@ not become accepted architecture merely by appearing here.
   non-void rounds.
 - Chain evidence is authoritative. Application persistence contains only
   rebuildable, formula-versioned derived state and social organization.
+- The trading core is strict TypeScript split into deterministic domain modules
+  and an injected DreamDEX SDK adapter, with no application framework.
+- Core tests use Node's test runner through `tsx`; TypeScript, `tsx`, and Node
+  types are development-only dependencies.
 
 See [DOMAIN_AND_SCORING.md](DOMAIN_AND_SCORING.md) for the approved policy.
 
@@ -26,7 +30,7 @@ See [DOMAIN_AND_SCORING.md](DOMAIN_AND_SCORING.md) for the approved policy.
 
 | Decision | Needed before | Current constraint |
 |---|---|---|
-| Runtime and application framework | Issue #4 | Select only after the Phase 1 integration spike |
+| Application framework | Issue #5 | Must consume the core without moving chain rules into UI code |
 | Wallet connection library | Issue #5 | Must support Somnia and explicit user authorization |
 | Persistence technology and schema | Issue #3 implementation | Must store social organization, not replace chain truth |
 | Identity policy | Issue #7 | Short wallet address by default; optional names need abuse controls |

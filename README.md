@@ -44,6 +44,22 @@ Open `http://127.0.0.1:4173`. The harness never receives a private key: it
 prepares runtime-discovered transactions and the injected browser wallet signs
 each transaction after showing it to the owner.
 
+## Core verification
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+The read-only live check additionally requires trusted DreamDEX origin values:
+
+```bash
+DREAMDEX_OPERATOR_ID=<id> DREAMDEX_VENUE_ID=<bytes32> npm run check:live
+```
+
+See [the approved core architecture](docs/ARCHITECTURE.md).
+
 ## Repository policy
 
 - Never work directly on `main`.
