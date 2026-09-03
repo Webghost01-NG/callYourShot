@@ -11,6 +11,16 @@ not become accepted architecture merely by appearing here.
 - Friend challenges compare independent DreamDEX trades and do not custody
   participant funds.
 - Custom Event Contract creation is outside the MVP.
+- `CYS-EDGE-v1` uses round points equal to
+  `100 × (result − filled outcome price)` and a skill score equal to
+  `50 + average round points ÷ 2`.
+- Stake size never affects rank, the first qualifying fill locks one call per
+  player and market, and profiles remain provisional until ten settled,
+  non-void rounds.
+- Chain evidence is authoritative. Application persistence contains only
+  rebuildable, formula-versioned derived state and social organization.
+
+See [DOMAIN_AND_SCORING.md](DOMAIN_AND_SCORING.md) for the approved policy.
 
 ## Open decisions requiring approval
 
@@ -20,7 +30,6 @@ not become accepted architecture merely by appearing here.
 | Wallet connection library | Issue #5 | Must support Somnia and explicit user authorization |
 | Persistence technology and schema | Issue #3 implementation | Must store social organization, not replace chain truth |
 | Identity policy | Issue #7 | Short wallet address by default; optional names need abuse controls |
-| Skill-score formula | Issue #3 completion | Must be transparent, probability-aware, and sample-size honest |
 | Hosting and CI/CD | Deployment phase | Requires explicit authorization |
 
 ## Known technical constraints
