@@ -92,6 +92,7 @@ export interface ProfileCriteria {
   asset: string;
   intervalSec: number;
   origin: VenueOrigin;
+  minimumTimestampSec?: bigint;
 }
 
 export interface EvidenceGap {
@@ -228,6 +229,11 @@ export class DreamDexProfileReconciler {
     const grouped = new Map<string, IndexedProfileFill[]>();
     for (const row of rows) {
       if (!BYTES32.test(row.market)) continue;
+      if (
+        criteria.minimumTimestampSec !== undefined
+        && /^\d+$/.test(row.timestamp)
+        && BigInt(row.timestamp) < criteria.minimumTimestampSec
+      ) continue;
       const key = row.market.toLowerCase();
       grouped.set(key, [...(grouped.get(key) ?? []), row]);
     }
@@ -275,7 +281,12 @@ export class DreamDexProfileReconciler {
       try {
         marketFills = marketRows.flatMap((row) => {
           const converted = indexedFillFor(account, row);
-          return converted ? [converted] : [];
+          if (!converted) return [];
+          if (
+            criteria.minimumTimestampSec !== undefined
+            && converted.timestampSec < criteria.minimumTimestampSec
+          ) return [];
+          return [converted];
         });
       } catch (error) {
         evidenceGaps.push({ marketId, kind: "fill", message: `Fill evidence incomplete: ${errorMessage(error)}` });

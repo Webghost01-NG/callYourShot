@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useWalletClient } from "wagmi";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import type { Hex } from "viem";
 import type { VerifiedExecution } from "../core/execution.js";
 import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
 import { readPublicConfig } from "./config.js";
+import { readSocialConfig } from "../social/config.js";
 import { formatUnits, parseDecimalUnits } from "./amounts.js";
 import { ProfilePanel, type ProfileLoadState } from "./ProfilePanel.js";
 import { buildCallQuote } from "./quote.js";
@@ -12,6 +13,10 @@ import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js"
 
 type LoadState = "loading" | "ready" | "empty" | "stale" | "error";
 type TxState = "idle" | "preparing" | "review" | "authorizing" | "submitted" | "filled" | "unfilled" | "rejected" | "failed";
+
+const SocialPanel = lazy(() => import("./SocialPanel.js").then((module) => ({
+  default: module.SocialPanel,
+})));
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong.";
@@ -34,6 +39,13 @@ export function App() {
     try {
       const config = readPublicConfig(import.meta.env);
       return { config, error: null };
+    } catch (error) {
+      return { config: null, error: errorMessage(error) };
+    }
+  }, []);
+  const socialConfigResult = useMemo(() => {
+    try {
+      return { config: readSocialConfig(import.meta.env), error: null };
     } catch (error) {
       return { config: null, error: errorMessage(error) };
     }
@@ -327,6 +339,19 @@ export function App() {
           error={profileError}
           onRefresh={() => void loadProfile()}
         />
+
+        <Suspense fallback={<section className="social-section"><div className="profile-empty"><span><i className="spinner" />Loading the skill league…</span></div></section>}>
+          <SocialPanel
+            config={socialConfigResult.config}
+            configError={socialConfigResult.error}
+            runtime={runtime}
+            round={round}
+            connected={isConnected}
+            address={address}
+            walletClient={walletClient}
+            onConnect={connectWallet}
+          />
+        </Suspense>
 
         <section className="how-it-works"><p className="eyebrow">Simple on top. Verifiable underneath.</p><div><article><b>01</b><strong>Pick a side</strong><span>Higher or lower. No charts required.</span></article><article><b>02</b><strong>Set your limit</strong><span>Your maximum loss is clear before signing.</span></article><article><b>03</b><strong>Prove your instinct</strong><span>Only a real DreamDEX fill becomes a call.</span></article></div></section>
       </main>

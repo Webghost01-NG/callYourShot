@@ -33,6 +33,14 @@ not become accepted architecture merely by appearing here.
 - Accuracy, streaks, fee-aware actual return, maximum drawdown, and provisional
   status follow the definitions in `PROFILE_RECONCILIATION.md`; voids are
   visible and excluded from statistics.
+- Issue #7 uses Supabase only for public wallet enrollment, optional names, and
+  noncustodial challenge coordination. Its database timestamp starts league
+  scoring; `CYS-EDGE-v1` remains recomputed from DreamDEX evidence.
+- Social writes use Supabase EIP-4361 Web3 authentication and audited RPCs that
+  derive the caller's address from `auth.identities`. RLS and column grants hide
+  auth user IDs and prevent browser-direct mutation.
+- Vite accepts only a Supabase public URL and publishable/legacy anon key. A
+  secret or service-role key is rejected and is never a frontend dependency.
 
 See [DOMAIN_AND_SCORING.md](DOMAIN_AND_SCORING.md) for the approved policy.
 
@@ -40,8 +48,6 @@ See [DOMAIN_AND_SCORING.md](DOMAIN_AND_SCORING.md) for the approved policy.
 
 | Decision | Needed before | Current constraint |
 |---|---|---|
-| Persistence technology and schema | Issue #7 | Must store social organization, not replace chain truth |
-| Identity policy | Issue #7 | Short wallet address by default; optional names need abuse controls |
 | Hosting and CI/CD | Deployment phase | Requires explicit authorization |
 
 ## Known technical constraints

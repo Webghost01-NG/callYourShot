@@ -10,6 +10,7 @@ import {
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import {
   createPublicClient,
+  createWalletClient,
   decodeEventLog,
   encodeFunctionData,
   http,
@@ -108,6 +109,23 @@ export class BrowserDreamDexRuntime {
     if (walletClient.account?.address.toLowerCase() !== account.toLowerCase()) {
       throw new Error("Connected wallet changed before profile reconciliation.");
     }
+    return this.reconcileProfile(account, walletClient);
+  }
+
+  async loadPublicProfile(account: Address, minimumTimestampSec?: bigint) {
+    const readOnlyWallet = createWalletClient({
+      account,
+      chain: somniaShannon,
+      transport: http(this.config.httpRpcUrl),
+    });
+    return this.reconcileProfile(account, readOnlyWallet, minimumTimestampSec);
+  }
+
+  private async reconcileProfile(
+    account: Address,
+    walletClient: WalletClient,
+    minimumTimestampSec?: bigint,
+  ) {
     const adapter = this.adapter(walletClient);
     const reconciler = new DreamDexProfileReconciler(
       this.exchange.client,
@@ -117,6 +135,7 @@ export class BrowserDreamDexRuntime {
       asset: "BTC",
       intervalSec: 900,
       origin: { operatorId: this.config.operatorId, venueId: this.config.venueId },
+      minimumTimestampSec,
     });
   }
 

@@ -23,11 +23,17 @@ result can score. The pure profile reducer applies `CYS-EDGE-v1`, streak,
 accuracy, fee-aware return, and drawdown rules. See
 [PROFILE_RECONCILIATION.md](PROFILE_RECONCILIATION.md).
 
+Issue #7 adds Supabase outside the scoring boundary. It stores public league
+enrollment, optional names, and noncustodial challenge coordination. Scores and
+challenge results are never authoritative database fields; the browser rebuilds
+them from DreamDEX after a server-timestamped enrollment boundary. See
+[SOCIAL_COMPETITION.md](SOCIAL_COMPETITION.md).
+
 The core does not select or depend on:
 
 - a frontend or backend framework;
 - a wallet connection library;
-- a database or physical schema;
+- a database or physical schema for trading or scoring truth;
 - custody, relaying, session keys, or smart contracts.
 
 ## Trust boundaries
@@ -40,6 +46,10 @@ The core does not select or depend on:
 - Indexed fills discover profile candidates; on-chain finalization and the
   permanent settlement record determine scored outcomes.
 - Wallets sign outside the core. No private key crosses this boundary.
+- Supabase Web3 Auth proves social-write ownership; database RPCs derive the
+  address from the server-side identity rather than browser input.
+- Supabase social rows are public coordination data. DreamDEX evidence remains
+  authoritative for every displayed score and result.
 
 ## Verification
 
