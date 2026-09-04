@@ -1,24 +1,39 @@
+import {
+  quoteBinaryStakeOverBook,
+  type BinaryBuySide,
+  type BinaryOrderBook,
+} from "@somnia-chain/markets-sdk";
 import type { BookConstraints } from "../core/units.js";
-import { floorToIncrement, maximumBuyCost } from "../core/units.js";
+
+export function selectedOutcomePrice(
+  side: BinaryBuySide,
+  yesPrice: bigint,
+  priceScale: bigint,
+) {
+  return side === "BUY_YES" ? yesPrice : priceScale - yesPrice;
+}
 
 export function buildCallQuote(input: {
   stake: bigint;
-  bestAsk: bigint;
+  side: BinaryBuySide;
+  book: BinaryOrderBook;
   constraints: BookConstraints;
 }) {
-  const { stake, bestAsk, constraints } = input;
-  const protection = constraints.tickSize > constraints.priceScale / 100n
-    ? constraints.tickSize
-    : constraints.priceScale / 100n;
-  const limitPrice = bestAsk + protection < constraints.priceScale
-    ? bestAsk + protection
-    : bestAsk;
-  const rawQuantity = (stake * constraints.priceScale) / limitPrice;
-  const quantity = floorToIncrement(rawQuantity, constraints.lotSize);
-  if (quantity < constraints.minQuantity) {
-    throw new Error("Stake is too small for this market's minimum order.");
+  const quote = quoteBinaryStakeOverBook(
+    input.book,
+    input.side,
+    input.stake,
+    input.constraints.priceScale,
+    input.constraints,
+  );
+  if (!quote) {
+    throw new Error("This stake cannot fill the selected side at the live market depth.");
   }
-  const maximumCost = maximumBuyCost(limitPrice, quantity, constraints.priceScale);
-  if (maximumCost > stake) throw new Error("Calculated maximum loss exceeds the stake.");
-  return { limitPrice, quantity, maximumCost, possiblePayout: quantity };
+  return {
+    yesPrice: quote.yesPrice,
+    limitPrice: quote.limitPrice,
+    quantity: quote.quantity,
+    maximumCost: quote.escrow,
+    possiblePayout: quote.quantity,
+  };
 }

@@ -208,3 +208,20 @@ This verifies actual WebSocket delivery rather than connection setup alone.
 ## Current blockers
 
 None for the Issue #2 acceptance criteria.
+
+## Application order-price semantics
+
+DreamDEX binary orders always encode `price` in the YES frame, including
+`BUY_NO` orders. The user-facing DOWN price is the complement of that value:
+`priceScale - yesPrice`. Call Your Shot therefore quotes stake against the
+complete live book, sends the SDK-provided YES price to the pool, and presents
+the complemented price to DOWN users.
+
+The application refreshes market discovery and the order book immediately
+before it prepares a wallet review. It still estimates the order against chain
+state immediately before submission, so an IOC order is not sent when the live
+price has moved beyond the reviewed limit.
+
+These semantics are covered by automated UP and DOWN quote tests. A successful
+fill initiated from the React application remains a manual Issue #5 acceptance
+check because only the wallet owner can authorize it.

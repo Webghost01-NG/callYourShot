@@ -8,7 +8,7 @@ import { readPublicConfig } from "./config.js";
 import { readSocialConfig } from "../social/config.js";
 import { formatUnits, parseDecimalUnits } from "./amounts.js";
 import { ProfilePanel, type ProfileLoadState } from "./ProfilePanel.js";
-import { buildCallQuote } from "./quote.js";
+import { buildCallQuote, selectedOutcomePrice } from "./quote.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
 
 type LoadState = "loading" | "ready" | "empty" | "stale" | "error";
@@ -159,16 +159,17 @@ export function App() {
     try {
       return buildCallQuote({
         stake: parseDecimalUnits(stake, round.market.indexed.quoteDecimals),
-        bestAsk,
+        side,
+        book: round.book,
         constraints: round.market.constraints,
       });
     } catch {
       return null;
     }
-  }, [bestAsk, round, stake]);
+  }, [bestAsk, round, side, stake]);
 
   async function reviewCall() {
-    if (!round || bestAsk === undefined || !quote) return;
+    if (!round || !quote) return;
     if (!isConnected) {
       const connector = connectors[0];
       if (!connector) {
@@ -184,12 +185,20 @@ export function App() {
     try {
       if (chainId !== somniaShannon.id) await switchChainAsync({ chainId: somniaShannon.id });
       if (!walletClient) throw new Error("Wallet is still connecting. Try again.");
+      const liveRound = await runtime!.loadRound();
+      const liveQuote = buildCallQuote({
+        stake: parseDecimalUnits(stake, liveRound.market.indexed.quoteDecimals),
+        side,
+        book: liveRound.book,
+        constraints: liveRound.market.constraints,
+      });
+      setRound(liveRound);
       const nextPlan = await runtime!.prepareOrder({
         walletClient,
-        market: round.market,
+        market: liveRound.market,
         side,
-        price: quote.limitPrice,
-        quantity: quote.quantity,
+        yesPrice: liveQuote.yesPrice,
+        quantity: liveQuote.quantity,
       });
       setPlan(nextPlan);
       setTxState("review");
@@ -316,7 +325,7 @@ export function App() {
               <div className="review-panel" role="dialog" aria-label="Review your call">
                 <p className="eyebrow">Review before signing</p>
                 <h2>{selected === "UP" ? "Higher" : "Lower"} with a maximum loss of {formatUnits(plan.maximumCost, decimals)} tUSDC</h2>
-                <p>{plan.approval ? "Your wallet will request a bounded token approval, then the trade." : "Your wallet will request the trade."} The call counts only after a real fill is verified. Price protection: {formatUnits(plan.price * 100n, decimals, 1)}% maximum.</p>
+                <p>{plan.approval ? "Your wallet will request a bounded token approval, then the trade." : "Your wallet will request the trade."} The call counts only after a real fill is verified. Price protection: {formatUnits(plan.selectedLimitPrice * 100n, decimals, 1)}% maximum.</p>
                 <div className="review-actions"><button className="secondary" onClick={() => setTxState("idle")}>Go back</button><button className="primary" onClick={() => void confirmCall()}>Confirm in wallet</button></div>
               </div>
             ) : (
@@ -327,7 +336,7 @@ export function App() {
 
             {txState === "authorizing" && <p className="tx-status" aria-live="polite"><span className="spinner" />Approve the request in your wallet. Nothing is submitted yet.</p>}
             {txState === "submitted" && <p className="tx-status" aria-live="polite"><span className="spinner" />Submitted to Somnia. Waiting for a verified fill… <code>{shortAddress(txHash)}</code></p>}
-            {txState === "filled" && execution && <div className="verified-receipt" role="status"><span>✓</span><div><strong>Your {selected} call is verified</strong><small>{formatUnits(execution.totalQuantity, decimals)} contracts filled at an average {formatUnits(execution.averageFillPrice * 100n, decimals, 0)}% price.</small><code>{shortAddress(execution.transactionHash)}</code></div></div>}
+            {txState === "filled" && execution && plan && <div className="verified-receipt" role="status"><span>✓</span><div><strong>Your {plan.side === "BUY_YES" ? "UP" : "DOWN"} call is verified</strong><small>{formatUnits(execution.totalQuantity, decimals)} contracts filled at an average {formatUnits(selectedOutcomePrice(plan.side, execution.averageFillPrice, plan.market.constraints.priceScale) * 100n, decimals, 0)}% price.</small><code>{shortAddress(execution.transactionHash)}</code></div></div>}
             {(["unfilled", "rejected", "failed"] as TxState[]).includes(txState) && <div className="tx-error" role="alert"><strong>{txState === "unfilled" ? "Order mined, but not filled" : txState === "rejected" ? "Request rejected" : "Call not placed"}</strong><span>{txError}</span><button onClick={() => setTxState("idle")}>Try again safely</button></div>}
           </section>
         )}
