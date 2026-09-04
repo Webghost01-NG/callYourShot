@@ -23,6 +23,7 @@ import { DreamDexAdapter, type DiscoveredMarket } from "../dreamdex/adapter.js";
 import { DreamDexProfileReconciler } from "../dreamdex/reconciliation.js";
 import { maximumBuyCost } from "../core/units.js";
 import type { PublicAppConfig } from "./config.js";
+import { selectedOutcomePrice } from "./quote.js";
 
 const poolParametersAbi = parseAbi([
   "function getOrderBookParameters() view returns (uint256 tickSize, uint256 minQuantity, uint256 lotSize)",
@@ -37,7 +38,8 @@ export interface LiveRound {
 export interface OrderPlan {
   market: DiscoveredMarket;
   side: "BUY_YES" | "BUY_NO";
-  price: bigint;
+  yesPrice: bigint;
+  selectedLimitPrice: bigint;
   quantity: bigint;
   maximumCost: bigint;
   approval?: UnsignedCall;
@@ -143,13 +145,18 @@ export class BrowserDreamDexRuntime {
     walletClient: WalletClient;
     market: DiscoveredMarket;
     side: "BUY_YES" | "BUY_NO";
-    price: bigint;
+    yesPrice: bigint;
     quantity: bigint;
   }): Promise<OrderPlan> {
     const account = input.walletClient.account?.address;
     if (!account) throw new Error("Connect a wallet before reviewing your call.");
+    const selectedLimitPrice = selectedOutcomePrice(
+      input.side,
+      input.yesPrice,
+      input.market.constraints.priceScale,
+    );
     const maximumCost = maximumBuyCost(
-      input.price,
+      selectedLimitPrice,
       input.quantity,
       input.market.constraints.priceScale,
     );
@@ -160,7 +167,7 @@ export class BrowserDreamDexRuntime {
     );
     const unsigned = await this.adapter(input.walletClient).prepareOrder(input.market, {
       side: input.side,
-      price: input.price,
+      price: input.yesPrice,
       quantity: input.quantity,
       orderType: ORDER_TYPE.MARKET,
       autoApprove: false,
@@ -179,7 +186,7 @@ export class BrowserDreamDexRuntime {
       value: 0n,
       description: `Approve at most ${maximumCost} collateral units for this call`,
     } satisfies UnsignedCall : undefined;
-    return { ...input, maximumCost, approval, order: unsigned.order };
+    return { ...input, selectedLimitPrice, maximumCost, approval, order: unsigned.order };
   }
 
   async sendPlan(
