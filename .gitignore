@@ -17,3 +17,5 @@ keystore.json
 .DS_Store
 .idea/
 .vscode/
+.vercel/
+supabase/.temp/
