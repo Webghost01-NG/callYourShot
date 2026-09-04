@@ -365,8 +365,8 @@ export function SocialPanel({
 
   if (!config) {
     return (
-      <section className="social-section" aria-labelledby="league-title">
-        <div className="section-heading"><div><p className="eyebrow">Skill league</p><h2 id="league-title">Compete on proof, not bankroll.</h2></div></div>
+      <section className="social-section" id="league" aria-labelledby="league-title">
+        <div className="section-heading"><span className="section-index">03</span><div><p className="eyebrow">Skill league</p><h2 id="league-title">Compete on proof, not bankroll.</h2></div></div>
         <div className="profile-empty"><strong>Social league is not configured</strong><span>{configError ?? "Add the public Supabase URL and publishable key to enable real enrollments. No sample players are shown."}</span></div>
       </section>
     );
@@ -378,8 +378,9 @@ export function SocialPanel({
   const canCancel = challenge?.status === "open" && address?.toLowerCase() === challenge.creatorWallet.toLowerCase();
 
   return (
-    <section className="social-section" aria-labelledby="league-title">
+    <section className="social-section" id="league" aria-labelledby="league-title">
       <div className="section-heading">
+        <span className="section-index">03</span>
         <div><p className="eyebrow">Skill league</p><h2 id="league-title">Compete on proof, not bankroll.</h2><p>Scores are rebuilt from real DreamDEX fills after enrollment. Spending more never improves rank.</p></div>
         <button className="secondary refresh-profile" onClick={() => void loadBoard()} disabled={state === "loading"}>Refresh board</button>
       </div>
