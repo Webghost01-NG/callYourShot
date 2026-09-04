@@ -8,8 +8,7 @@ Issue #6 stores no profile database and introduces no persistence schema. A
 connected wallet's profile is rebuilt from DreamDEX on each load:
 
 1. page the wallet's complete indexed fill history at a fixed time boundary;
-2. keep only binary BTC 15-minute markets from the configured operator and
-   venue;
+2. keep only binary markets from the configured operator and venue;
 3. attribute each fill to the wallet as maker or taker;
 4. retain directional buys and lock the earliest order for each `marketId`;
 5. aggregate partial fills from that same order;

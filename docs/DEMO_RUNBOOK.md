@@ -32,11 +32,12 @@ fixtures or screenshots for live DreamDEX evidence.
 Say: “Call Your Shot is a prediction league where spending more cannot buy a
 better rank. Every call and result is rebuilt from a real DreamDEX trade.”
 
-Point to the live question, opening reference, countdown, and UP/DOWN choices.
+Point to the live market lobby, select one real event, then show its question,
+countdown, and YES/NO choices.
 
 ### 0:25–1:10 — One real call
 
-1. Choose UP or DOWN based on the live round.
+1. Choose one live event and then choose YES or NO.
 2. Enter a deliberately small maximum loss.
 3. Show the market-derived price, maximum loss, and possible payout.
 4. Open the review and explain the bounded approval, if one is required.
@@ -71,7 +72,7 @@ be independently reconstructed from DreamDEX Event Contracts on Somnia.”
 
 ## Failure branches
 
-- **No eligible round:** explain the expiry-headroom protection, then use real
+- **No eligible market:** explain the origin and expiry-headroom protections, then use real
   settled profile evidence.
 - **Empty selected side:** switch sides only if that matches the presenter’s
   actual call; never invent a price.

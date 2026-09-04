@@ -8,6 +8,12 @@ evidence.
 
 - Current-round snapshots are periodically rebuilt instead of depending on an
   uninterrupted event stream.
+- Live discovery is bounded and paginated across binary assets and cadences;
+  every candidate remains restricted to the configured operator and venue and
+  is verified on-chain before display.
+- Market selection is keyed by `marketId`; changing events clears reviewed
+  plans, transaction state, and receipts, while order review refreshes the exact
+  selected event instead of accepting a replacement.
 - A displayed round is automatically rediscovered after its expiry when no
   transaction is in progress.
 - Overlapping round reads are sequenced so an older response cannot overwrite a
@@ -56,7 +62,7 @@ These cannot be honestly marked complete by automated fixtures:
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| No eligible or liquid BTC round during judging | Live write cannot be demonstrated | Lead with the live state, then use genuine previously settled evidence; never fabricate liquidity |
+| No eligible or liquid Event Contract during judging | Live write cannot be demonstrated | Use the live multi-market lobby, then lead with genuine previously settled evidence if all books are empty; never fabricate liquidity |
 | Book moves before an IOC lands | Transaction is safely refused or unfilled | Refresh before review, use SDK slippage protection, verify fill events |
 | Indexer or RPC interruption | Discovery or profile reconstruction is unavailable | Retry bounded reads, rebuild snapshots, preserve honest error states |
 | Demo wallet lacks STT or tUSDC | Wallet cannot authorize the demo | Check public balances before judging; keep credentials outside the application |

@@ -2,10 +2,10 @@
 
 ## Thirty-second explanation
 
-Every round, a player predicts whether Bitcoin or Ethereum will finish higher
-or lower than where it started. DreamDEX executes and publicly settles the real
-trade. Call Your Shot then measures consistent decision quality, allowing
-players to challenge friends and build a verifiable prediction record.
+A player picks a live DreamDEX event, chooses YES or NO, and sets the most they
+can lose. DreamDEX executes and publicly settles the real trade. Call Your Shot
+then measures consistent decision quality, allowing players to challenge
+friends and build a verifiable prediction record.
 
 ## Primary user
 
@@ -27,7 +27,7 @@ probability-aware method rather than total dollar profit.
 
 ## Minimum winning product
 
-- One supported live BTC Event Contract cadence
+- A bounded lobby of live binary Event Contracts from one trusted DreamDEX venue
 - Clear UP or DOWN selection and bounded-risk review
 - User-authorized DreamDEX order and verified fill
 - Previously settled prediction with oracle evidence

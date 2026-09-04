@@ -7,6 +7,10 @@ not become accepted architecture merely by appearing here.
 
 - The product is human-first and uses AI only when it adds measurable value.
 - The MVP begins with one reliably available BTC Event Contract cadence.
+- Issue #22 supersedes that discovery constraint after live availability proved
+  too narrow: the app now supports a bounded set of binary Event Contracts from
+  the same trusted operator and venue, while keeping spot, perpetual, and
+  untrusted markets out of scope.
 - Only real DreamDEX fills and finalized outcomes count toward player records.
 - Friend challenges compare independent DreamDEX trades and do not custody
   participant funds.

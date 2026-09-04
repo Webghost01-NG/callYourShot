@@ -90,11 +90,13 @@ an environment file.
 npm run dev
 ```
 
-The application discovers the current BTC round at runtime. If discovery,
-on-chain verification, or the live book fails, the interface reports that state
-instead of substituting sample data. An injected wallet authorizes each bounded
-approval and trade; a submitted transaction is shown separately from a verified
-fill.
+The application discovers a bounded set of live binary Event Contracts from the
+configured DreamDEX operator and venue. It verifies every candidate on-chain,
+loads its real order book, and lets the player choose a market without reusing a
+quote from another event. If discovery, verification, or every live book fails,
+the interface reports that state instead of substituting sample data. An
+injected wallet authorizes each bounded approval and trade; a submitted
+transaction is shown separately from a verified fill.
 
 ## Optional social league
 
