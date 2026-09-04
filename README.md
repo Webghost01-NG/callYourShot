@@ -116,6 +116,7 @@ See [the persistence, authentication, RLS, privacy, and abuse design](docs/SOCIA
 ## Hackathon evidence
 
 - [DreamDEX integration and transaction evidence](docs/DREAMDEX_VALIDATION.md)
+- [Multi-market live discovery evidence](docs/MULTI_MARKET_VALIDATION.md)
 - [SDK and documentation feedback](docs/DREAMDEX_FEEDBACK.md)
 - [Judge demo runbook](docs/DEMO_RUNBOOK.md)
 - [Release validation and rollback](docs/RELEASE_VALIDATION.md)
