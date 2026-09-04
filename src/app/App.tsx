@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useWalletClient } from "wagmi";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
-import { createWalletClient, custom, type EIP1193Provider, type Hex } from "viem";
+import { createWalletClient, custom, type Address, type EIP1193Provider, type Hex } from "viem";
 import type { VerifiedExecution } from "../core/execution.js";
 import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
 import { readPublicConfig } from "./config.js";
@@ -35,6 +35,39 @@ function countdown(expirySec: bigint, nowMs: number) {
   return `${minutes}:${seconds}`;
 }
 
+interface WalletConnectionInput {
+  currentAddress?: Address;
+  currentChainId?: number;
+  connect: () => Promise<{ accounts: readonly Address[]; chainId: number }>;
+  getProvider: (chainId: number | undefined) => Promise<EIP1193Provider | undefined>;
+}
+
+export async function resolveConnectedWallet({
+  currentAddress,
+  currentChainId,
+  connect,
+  getProvider,
+}: WalletConnectionInput): Promise<ConnectedWallet> {
+  let connectedAddress = currentAddress;
+  let connectedChainId = currentChainId;
+  if (!connectedAddress) {
+    const connection = await connect();
+    connectedAddress = connection.accounts[0];
+    connectedChainId = connection.chainId;
+  }
+  const provider = await getProvider(connectedChainId);
+  if (!connectedAddress || !provider) {
+    throw new Error("Wallet connection did not return a signer.");
+  }
+  return {
+    address: connectedAddress,
+    walletClient: createWalletClient({
+      account: connectedAddress,
+      transport: custom(provider),
+    }),
+  };
+}
+
 export function App() {
   const configResult = useMemo(() => {
     try {
@@ -51,7 +84,7 @@ export function App() {
       return { config: null, error: errorMessage(error) };
     }
   }, []);
-  const { address, chainId, isConnected } = useAccount();
+  const { address, chainId, connector: activeConnector, isConnected } = useAccount();
   const { connectors, connectAsync, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChainAsync } = useSwitchChain();
@@ -281,24 +314,24 @@ export function App() {
   const openingReference = round?.market.indexed.question.match(/[\d,.]+/)?.[0];
 
   async function connectWallet(): Promise<ConnectedWallet | null> {
-    const connector = connectors[0];
+    const connector = activeConnector ?? connectors[0];
     if (!connector) {
       setTxError("No injected wallet is available in this browser.");
       setTxState("failed");
       return null;
     }
     try {
-      const connection = await connectAsync({ connector });
-      const connectedAddress = connection.accounts[0];
-      const provider = await connector.getProvider({ chainId: connection.chainId });
-      if (!connectedAddress || !provider) throw new Error("Wallet connection did not return a signer.");
-      return {
-        address: connectedAddress,
-        walletClient: createWalletClient({
-          account: connectedAddress,
-          transport: custom(provider as EIP1193Provider),
-        }),
-      };
+      return await resolveConnectedWallet({
+        currentAddress: isConnected ? address : undefined,
+        currentChainId: isConnected ? chainId : undefined,
+        connect: () => connectAsync({ connector }),
+        getProvider: async (providerChainId) => {
+          const provider = await connector.getProvider(
+            providerChainId === undefined ? undefined : { chainId: providerChainId },
+          );
+          return provider as EIP1193Provider | undefined;
+        },
+      });
     } catch (error) {
       setTxError(errorMessage(error));
       setTxState("rejected");
