@@ -6,6 +6,6 @@ export default defineConfig({
   build: { target: "es2022" },
   test: {
     environment: "jsdom",
-    include: ["tests/app/**/*.spec.ts"],
+    include: ["tests/app/**/*.spec.{ts,tsx}"],
   },
 });

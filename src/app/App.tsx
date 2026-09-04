@@ -3,8 +3,10 @@ import { useAccount, useConnect, useDisconnect, useSwitchChain, useWalletClient 
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import type { Hex } from "viem";
 import type { VerifiedExecution } from "../core/execution.js";
+import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
 import { readPublicConfig } from "./config.js";
 import { formatUnits, parseDecimalUnits } from "./amounts.js";
+import { ProfilePanel, type ProfileLoadState } from "./ProfilePanel.js";
 import { buildCallQuote } from "./quote.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
 
@@ -52,6 +54,9 @@ export function App() {
   const [txHash, setTxHash] = useState<Hex>();
   const [execution, setExecution] = useState<VerifiedExecution>();
   const [txError, setTxError] = useState<string>();
+  const [profileState, setProfileState] = useState<ProfileLoadState>("idle");
+  const [profileResult, setProfileResult] = useState<ReconciledProfile>();
+  const [profileError, setProfileError] = useState<string>();
   const [now, setNow] = useState(Date.now());
 
   const loadRound = useCallback(async () => {
@@ -81,6 +86,19 @@ export function App() {
     }
   }, [configResult, runtime]);
 
+  const loadProfile = useCallback(async () => {
+    if (!runtime || !address || !walletClient) return;
+    setProfileState("loading");
+    setProfileError(undefined);
+    try {
+      setProfileResult(await runtime.loadProfile(address, walletClient));
+      setProfileState("ready");
+    } catch (error) {
+      setProfileError(errorMessage(error));
+      setProfileState("error");
+    }
+  }, [address, runtime, walletClient]);
+
   useEffect(() => {
     if (!configResult.config) {
       setLoadState("error");
@@ -106,6 +124,15 @@ export function App() {
   useEffect(() => {
     if (runtime) void loadRound();
   }, [loadRound, runtime]);
+
+  useEffect(() => {
+    if (isConnected && runtime && address && walletClient) void loadProfile();
+    else {
+      setProfileState("idle");
+      setProfileResult(undefined);
+      setProfileError(undefined);
+    }
+  }, [address, isConnected, loadProfile, runtime, walletClient]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
@@ -292,6 +319,14 @@ export function App() {
             {(["unfilled", "rejected", "failed"] as TxState[]).includes(txState) && <div className="tx-error" role="alert"><strong>{txState === "unfilled" ? "Order mined, but not filled" : txState === "rejected" ? "Request rejected" : "Call not placed"}</strong><span>{txError}</span><button onClick={() => setTxState("idle")}>Try again safely</button></div>}
           </section>
         )}
+
+        <ProfilePanel
+          connected={isConnected}
+          state={profileState}
+          result={profileResult}
+          error={profileError}
+          onRefresh={() => void loadProfile()}
+        />
 
         <section className="how-it-works"><p className="eyebrow">Simple on top. Verifiable underneath.</p><div><article><b>01</b><strong>Pick a side</strong><span>Higher or lower. No charts required.</span></article><article><b>02</b><strong>Set your limit</strong><span>Your maximum loss is clear before signing.</span></article><article><b>03</b><strong>Prove your instinct</strong><span>Only a real DreamDEX fill becomes a call.</span></article></div></section>
       </main>
