@@ -9,23 +9,28 @@ import { readSocialConfig } from "../social/config.js";
 import { formatUnits, parseDecimalUnits } from "./amounts.js";
 import { ProfilePanel, type ProfileLoadState } from "./ProfilePanel.js";
 import { cadenceLabel, outcomeLabels } from "./marketLabels.js";
+import { isUserRejectedRequest, publicErrorMessage, transactionFailureMessage } from "./errors.js";
 import { buildCallQuote, selectedOutcomePrice } from "./quote.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
 import type { ConnectedWallet } from "./SocialPanel.js";
 
 type LoadState = "loading" | "ready" | "empty" | "stale" | "error";
-type TxState = "idle" | "preparing" | "review" | "authorizing" | "submitted" | "filled" | "unfilled" | "rejected" | "failed";
+type TxState = "idle" | "preparing" | "review" | "approval-requested" | "approval-submitted" | "approval-confirmed" | "order-requested" | "submitted" | "filled" | "unfilled" | "rejected" | "failed";
 
 const SocialPanel = lazy(() => import("./SocialPanel.js").then((module) => ({
   default: module.SocialPanel,
 })));
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Something went wrong.";
+  return publicErrorMessage(error, "Something went wrong. Try again.");
 }
 
 function shortAddress(address?: string) {
   return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Connect wallet";
+}
+
+function explorerTransaction(hash?: Hex) {
+  return hash ? `${somniaShannon.blockExplorers.default.url}/tx/${hash}` : undefined;
 }
 
 function countdown(expirySec: bigint, nowMs: number) {
@@ -105,6 +110,8 @@ export function App() {
   const [plan, setPlan] = useState<OrderPlan>();
   const [txState, setTxState] = useState<TxState>("idle");
   const [txHash, setTxHash] = useState<Hex>();
+  const [approvalHash, setApprovalHash] = useState<Hex>();
+  const [approvalConfirmed, setApprovalConfirmed] = useState(false);
   const [execution, setExecution] = useState<VerifiedExecution>();
   const [txError, setTxError] = useState<string>();
   const [profileState, setProfileState] = useState<ProfileLoadState>("idle");
@@ -219,7 +226,7 @@ export function App() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const transactionInFlight = ["preparing", "review", "authorizing", "submitted"].includes(txState);
+  const transactionInFlight = ["preparing", "review", "approval-requested", "approval-submitted", "approval-confirmed", "order-requested", "submitted"].includes(txState);
   const automaticRefreshBlocked = transactionInFlight || txState === "filled";
 
   useEffect(() => {
@@ -279,6 +286,8 @@ export function App() {
     setPlan(undefined);
     setExecution(undefined);
     setTxHash(undefined);
+    setApprovalHash(undefined);
+    setApprovalConfirmed(false);
     setTxError(undefined);
     setTxState("idle");
     setLoadState(hasBuyLiquidity(next) ? "ready" : "empty");
@@ -298,6 +307,9 @@ export function App() {
     }
     setTxState("preparing");
     setTxError(undefined);
+    setTxHash(undefined);
+    setApprovalHash(undefined);
+    setApprovalConfirmed(false);
     try {
       if (chainId !== somniaShannon.id) {
         await switchChainAsync({ chainId: somniaShannon.id });
@@ -334,21 +346,47 @@ export function App() {
 
   async function confirmCall() {
     if (!plan || !walletClient) return;
-    setTxState("authorizing");
+    const progress = {
+      approvalRequired: Boolean(plan.approval),
+      approvalSubmitted: false,
+      approvalConfirmed: false,
+      orderSubmitted: false,
+      approvalDescription: `${formatUnits(plan.maximumCost, plan.market.indexed.quoteDecimals)} ${collateralLabel}`,
+    };
+    setTxState(plan.approval ? "approval-requested" : "order-requested");
     setTxError(undefined);
+    setTxHash(undefined);
+    setApprovalHash(undefined);
+    setApprovalConfirmed(false);
     try {
-      const result = await runtime!.sendPlan(walletClient, plan, (hash) => {
-        setTxHash(hash);
-        setTxState("submitted");
+      const result = await runtime!.sendPlan(walletClient, plan, {
+        onApprovalSubmitted: (hash) => {
+          progress.approvalSubmitted = true;
+          setApprovalHash(hash);
+          setTxState("approval-submitted");
+        },
+        onApprovalConfirmed: (hash) => {
+          progress.approvalConfirmed = true;
+          setApprovalHash(hash);
+          setApprovalConfirmed(true);
+          setTxState("approval-confirmed");
+        },
+        onOrderRequested: () => setTxState("order-requested"),
+        onOrderSubmitted: (hash) => {
+          progress.orderSubmitted = true;
+          setTxHash(hash);
+          setTxState("submitted");
+        },
       });
       setExecution(result);
       setTxState("filled");
     } catch (error) {
-      const message = errorMessage(error);
+      const safeSourceMessage = publicErrorMessage(error, "");
+      const message = transactionFailureMessage(error, progress);
       setTxError(message);
-      if (message.includes("live price moved")) await loadMarkets();
-      if (message.includes("did not fill")) setTxState("unfilled");
-      else if (message.toLowerCase().includes("rejected") || message.includes("denied")) setTxState("rejected");
+      if (safeSourceMessage.includes("live price moved")) await loadMarkets();
+      if (safeSourceMessage.includes("did not fill")) setTxState("unfilled");
+      else if (isUserRejectedRequest(error)) setTxState("rejected");
       else setTxState("failed");
     }
   }
@@ -493,15 +531,18 @@ export function App() {
                 <div className="review-actions"><button className="secondary" onClick={() => setTxState("idle")}>Go back</button><button className="primary" onClick={() => void confirmCall()}>Confirm in wallet</button></div>
               </div>
             ) : (
-              <button className="primary call-button" onClick={() => void reviewCall()} disabled={!quote || loadState !== "ready" || ["preparing", "authorizing", "submitted", "filled"].includes(txState)}>
+              <button className="primary call-button" onClick={() => void reviewCall()} disabled={!quote || loadState !== "ready" || ["preparing", "approval-requested", "approval-submitted", "approval-confirmed", "order-requested", "submitted", "filled"].includes(txState)}>
                 {!isConnected ? "Connect wallet to call it" : txState === "preparing" ? "Checking live market…" : txState === "filled" ? "Call verified" : `Review ${selected} call`}
               </button>
             )}
 
-            {txState === "authorizing" && <p className="tx-status" aria-live="polite"><span className="spinner" />Approve the request in your wallet. Nothing is submitted yet.</p>}
+            {txState === "approval-requested" && <p className="tx-status" aria-live="polite"><span className="spinner" />Confirm the bounded {collateralLabel} approval in your wallet. Nothing has been submitted yet.</p>}
+            {txState === "approval-submitted" && <p className="tx-status" aria-live="polite"><span className="spinner" />Approval submitted. Waiting for confirmation… <a href={explorerTransaction(approvalHash)} target="_blank" rel="noreferrer">View approval ↗</a></p>}
+            {txState === "approval-confirmed" && <p className="tx-status" aria-live="polite"><span className="spinner" />Bounded approval confirmed. Checking the live DreamDEX order… <a href={explorerTransaction(approvalHash)} target="_blank" rel="noreferrer">View approval ↗</a></p>}
+            {txState === "order-requested" && <p className="tx-status" aria-live="polite"><span className="spinner" />{approvalConfirmed ? "Approval confirmed. Now confirm the DreamDEX order in your wallet." : "Confirm the DreamDEX order in your wallet. Nothing has been submitted yet."}</p>}
             {txState === "submitted" && <p className="tx-status" aria-live="polite"><span className="spinner" />Submitted to Somnia. Waiting for a verified fill… <code>{shortAddress(txHash)}</code></p>}
             {txState === "filled" && execution && plan && <div className="verified-receipt" role="status"><span>✓</span><div><strong>Your {plan.side === "BUY_YES" ? labels.up : labels.down} call is verified</strong><small>{formatUnits(execution.totalQuantity, decimals)} contracts filled at an average {formatUnits(selectedOutcomePrice(plan.side, execution.averageFillPrice, plan.market.constraints.priceScale) * 100n, decimals, 0)}% price.</small><code>{shortAddress(execution.transactionHash)}</code></div></div>}
-            {(["unfilled", "rejected", "failed"] as TxState[]).includes(txState) && <div className="tx-error" role="alert"><strong>{txState === "unfilled" ? "Order mined, but not filled" : txState === "rejected" ? "Request rejected" : "Call not placed"}</strong><span>{txError}</span><button onClick={() => setTxState("idle")}>Try again safely</button></div>}
+            {(["unfilled", "rejected", "failed"] as TxState[]).includes(txState) && <div className="tx-error" role="alert"><strong>{txState === "unfilled" ? "Order mined, but not filled" : txState === "rejected" ? approvalConfirmed ? "Order cancelled" : plan?.approval ? "Approval cancelled" : "Order cancelled" : txHash ? "Verification interrupted" : "Call not placed"}</strong><span>{txError}</span>{(approvalHash || txHash) && <div className="tx-proof-links">{approvalHash && <a href={explorerTransaction(approvalHash)} target="_blank" rel="noreferrer">View approval transaction ↗</a>}{txHash && <a href={explorerTransaction(txHash)} target="_blank" rel="noreferrer">View order transaction ↗</a>}</div>}<button onClick={() => setTxState("idle")}>{txHash ? "Return to live market" : "Try again safely"}</button></div>}
           </section>
         )}
 

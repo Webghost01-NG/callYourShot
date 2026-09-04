@@ -56,6 +56,13 @@ export interface OrderPlan {
   order: UnsignedCall;
 }
 
+export interface SendPlanProgress {
+  onApprovalSubmitted: (hash: Hex) => void;
+  onApprovalConfirmed: (hash: Hex) => void;
+  onOrderRequested: () => void;
+  onOrderSubmitted: (hash: Hex) => void;
+}
+
 export function assertPlanAuthorization(
   plannedAccount: Address,
   activeAccount: Address | undefined,
@@ -276,7 +283,7 @@ export class BrowserDreamDexRuntime {
   async sendPlan(
     walletClient: WalletClient,
     plan: OrderPlan,
-    onSubmitted: (hash: Hex) => void,
+    progress: SendPlanProgress,
   ) {
     const account = walletClient.account;
     assertPlanAuthorization(plan.account, account?.address, walletClient.chain?.id);
@@ -307,18 +314,21 @@ export class BrowserDreamDexRuntime {
         chain: somniaShannon,
         gas: approvalGas,
       });
+      progress.onApprovalSubmitted(approvalHash);
       const approvalReceipt = await this.publicClient.waitForTransactionReceipt({ hash: approvalHash });
       if (approvalReceipt.status !== "success") throw new Error("Token approval reverted.");
+      progress.onApprovalConfirmed(approvalHash);
     }
     const { description: _orderDescription, ...order } = plan.order;
     const orderGas = await this.estimateCallGas(account.address, order);
+    progress.onOrderRequested();
     const hash = await walletClient.sendTransaction({
       ...order,
       account,
       chain: somniaShannon,
       gas: orderGas,
     });
-    onSubmitted(hash);
+    progress.onOrderSubmitted(hash);
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
     const fills = receipt.logs.flatMap((log) => {
       if (log.address.toLowerCase() !== plan.market.pool.toLowerCase()) return [];
