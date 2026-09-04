@@ -10,36 +10,37 @@ they are not represented by fixtures or invented records.
 
 - Stable URL: https://call-your-shot-six.vercel.app
 - Immutable URL:
-  https://call-your-shot-ll95mx7c8-webghost01-ngs-projects.vercel.app
+  https://call-your-shot-csbukg2qb-webghost01-ngs-projects.vercel.app
 - Hosting project: `webghost01-ngs-projects/call-your-shot`
-- Deployment ID: `dpl_9qnbJEhD6wZKK1uPqUwVPvqp4bLn`
-- Application source at deployment: commit `038f423`
+- Deployment ID: `dpl_AK8bjHHoq4AKoV27ehvYUaAjW49W`
+- Application source at deployment: commit `13109fe`
 - Hosting status observed: `Ready`
 - Repository homepage: configured to the stable URL
 - Git integration: connected to `Webghost01-NG/callYourShot`
 
-The immutable deployment was created with the Vercel CLI from a working tree
-whose application source matched commit `038f423`; the only uncommitted file
-was the Vercel ignore entry later included in this release branch. Once this
-release PR is reviewed and merged, the connected Git integration should create
-a fresh production deployment from `main`.
+The immutable deployment was created with the Vercel CLI from a clean working
+tree at commit `13109fe`. Once this release PR is reviewed and merged, the
+connected Git integration should create a fresh production deployment from
+`main`.
 
 ## Public configuration
 
-Only these DreamDEX browser configuration names are present in the Vercel
+Only these public browser configuration names are present in the Vercel
 Production, Preview, and Development environments:
 
 - `VITE_DREAMDEX_OPERATOR_ID`
 - `VITE_DREAMDEX_VENUE_ID`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 No wallet key, seed phrase, Vercel token, Supabase service-role key, or other
 server secret is stored in source. The local `.vercel` link and pulled
 `.env.local` are ignored and must never be committed.
 
-Supabase variables are intentionally absent because no target project URL or
-public publishable key has been supplied and no deployed RLS validation has
-been completed. The production interface therefore labels the social league
-unconfigured and displays no sample participants.
+The configured Supabase key is the browser-safe publishable key. Ethereum Web3
+authentication is enabled for Somnia network `50312`, and migrations
+`202609040001` and `202609040002` are present in both the local and remote
+migration histories. No service-role key is present in Vercel or source.
 
 ## Completed checks
 
@@ -52,8 +53,12 @@ unconfigured and displays no sample participants.
 | Mobile rendering | Pass | Visually inspected at 390 × 844 |
 | Honest no-market state | Pass | No eligible round produced an explicit unavailable state, not fallback data |
 | Social fail-closed state | Pass | Missing Supabase configuration produced an explicit unconfigured state |
-| Automated core/application suite | Pass | 31 Node tests and 19 Vitest tests passed before release |
+| Anonymous social reads | Pass | Profiles and challenges returned HTTP 200 with empty real tables |
+| Anonymous social mutation denial | Pass | `enroll_in_league` was denied with HTTP 401 and PostgreSQL code `42501` |
+| Supabase Web3 claim shape | Pass | Client and database read the verified identity from `identity_data.custom_claims`; wrong-network and obsolete flat claims are rejected |
+| Automated core/application suite | Pass | 33 Node tests and 20 Vitest tests passed before release |
 | TypeScript and production build | Pass | Completed before the deployment was created |
+| Production claim parser | Pass | The stable deployment returned HTTP 200 and its served social bundle contains the nested-claim parser |
 
 The visual checks found no clipped primary content at either viewport. The
 no-market snapshot could not exercise the prediction form's keyboard path or a
@@ -61,13 +66,9 @@ wallet transaction, so those are not marked complete here.
 
 ## Outstanding owner-operated acceptance
 
-- Supply or create the intended Supabase project, enable Ethereum Web3 Auth,
-  register the exact local and production redirect URLs, and apply
-  `supabase/migrations/202609040001_social_competition.sql`.
-- Add only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` after checking
-  that the key is public/publishable and not a service-role secret.
-- Validate anonymous league reads, authenticated owner writes, invited-wallet
-  challenge acceptance, and cross-wallet RLS denial using two real wallets.
+- Validate authenticated enrollment with the owner wallet, then validate
+  invited-wallet challenge acceptance and cross-wallet RLS denial using two
+  real wallets.
 - Authorize a small real UP or DOWN order from the deployed React application,
   confirm an actual `OrderFilled` event, and verify that the profile reconstructs
   the call. A successful transaction with no fill does not satisfy this check.
