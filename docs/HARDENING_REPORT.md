@@ -38,6 +38,9 @@ evidence.
   may remain.
 - Wallet/provider request dumps are normalized into concise user messages and
   long error content wraps inside the prediction card.
+- Shared receipt and challenge routes use explicit loading, ready, not-found,
+  and error states. Missing DreamDEX evidence cannot remain labeled as an
+  in-progress rebuild, and clipboard denial leaves a selectable result URL.
 
 ## Automated evidence
 
@@ -49,6 +52,8 @@ evidence.
   configuration, and component behavior.
 - Approval-versus-order progress callbacks, first-approval cancellation, later
   order cancellation, submitted-order uncertainty, and no-fill messaging.
+- Missing and failed shared-result reconstruction, missing challenges, and
+  clipboard-blocked result sharing.
 - Production dependency audit with zero reported vulnerabilities at the time of
   this pass.
 

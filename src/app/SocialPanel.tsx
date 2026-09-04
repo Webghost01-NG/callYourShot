@@ -12,6 +12,7 @@ import type { BrowserDreamDexRuntime, LiveRound } from "./runtime.js";
 import { callLabel } from "./marketLabels.js";
 
 type SocialLoadState = "idle" | "loading" | "ready" | "error";
+type SharedLoadState = "idle" | "loading" | "ready" | "not-found" | "error";
 
 interface SocialPanelProps {
   config: SocialConfig | null;
@@ -120,10 +121,15 @@ export function SocialPanel({
   const [displayName, setDisplayName] = useState("");
   const [invitee, setInvitee] = useState("");
   const [challengeLink, setChallengeLink] = useState<string>();
+  const [receiptLink, setReceiptLink] = useState<string>();
   const [actionState, setActionState] = useState<"idle" | "working" | "done" | "error">("idle");
   const [actionMessage, setActionMessage] = useState<string>();
   const [challengeEvidence, setChallengeEvidence] = useState<ChallengeEvidence>();
-  const [receiptRound, setReceiptRound] = useState<ProfileRound | null>();
+  const [challengeState, setChallengeState] = useState<SharedLoadState>(route.kind === "challenge" ? "loading" : "idle");
+  const [challengeError, setChallengeError] = useState<string>();
+  const [receiptRound, setReceiptRound] = useState<ProfileRound>();
+  const [receiptState, setReceiptState] = useState<SharedLoadState>(route.kind === "receipt" ? "loading" : "idle");
+  const [receiptError, setReceiptError] = useState<string>();
 
   const loadBoard = useCallback(async () => {
     if (!repository || !runtime) return;
@@ -166,11 +172,29 @@ export function SocialPanel({
   ), [address, board]);
 
   useEffect(() => {
-    if (!repository || !runtime || state !== "ready") return;
+    if (!repository || !runtime) return;
+    if (state === "error") {
+      if (route.kind === "challenge") {
+        setChallengeError("Challenge verification is unavailable because the public league could not be loaded.");
+        setChallengeState("error");
+      }
+      if (route.kind === "receipt") {
+        setReceiptError("Result verification is unavailable because the public league could not be loaded.");
+        setReceiptState("error");
+      }
+      return;
+    }
+    if (state !== "ready") return;
     let active = true;
     if (route.kind === "challenge") {
+      setChallengeEvidence(undefined);
+      setChallengeError(undefined);
+      setChallengeState("loading");
       void repository.getChallenge(route.challengeId).then(async (challenge) => {
-        if (!challenge) throw new Error("This challenge was not found.");
+        if (!challenge) {
+          if (active) setChallengeState("not-found");
+          return;
+        }
         const creatorEnrollment = enrollmentByWallet.get(challenge.creatorWallet.toLowerCase());
         const opponentEnrollment = enrollmentByWallet.get(challenge.invitedWallet.toLowerCase());
         if (!creatorEnrollment) throw new Error("The challenge creator is no longer enrolled.");
@@ -184,21 +208,46 @@ export function SocialPanel({
               enrollmentStart(opponentEnrollment),
             )
           : null;
-        if (active) setChallengeEvidence({
-          challenge,
-          creator: findRound(creator, challenge.marketId),
-          opponent: opponent ? findRound(opponent, challenge.marketId) : null,
-        });
-      }).catch((cause) => { if (active) setError(errorMessage(cause)); });
+        if (active) {
+          setChallengeEvidence({
+            challenge,
+            creator: findRound(creator, challenge.marketId),
+            opponent: opponent ? findRound(opponent, challenge.marketId) : null,
+          });
+          setChallengeState("ready");
+        }
+      }).catch((cause) => {
+        if (active) {
+          setChallengeError(errorMessage(cause));
+          setChallengeState("error");
+        }
+      });
     }
     if (route.kind === "receipt") {
+      setReceiptRound(undefined);
+      setReceiptError(undefined);
+      setReceiptState("loading");
       const enrollment = enrollmentByWallet.get(route.wallet.toLowerCase());
       if (!enrollment) {
-        setError("This wallet was not enrolled when the shared claim was created.");
+        setReceiptState("not-found");
       } else {
         void runtime.loadPublicProfile(route.wallet, enrollmentStart(enrollment))
-          .then((profile) => { if (active) setReceiptRound(findRound(profile, route.marketId)); })
-          .catch((cause) => { if (active) setError(errorMessage(cause)); });
+          .then((profile) => {
+            if (!active) return;
+            const found = findRound(profile, route.marketId);
+            if (!found) {
+              setReceiptState("not-found");
+              return;
+            }
+            setReceiptRound(found);
+            setReceiptState("ready");
+          })
+          .catch((cause) => {
+            if (active) {
+              setReceiptError(errorMessage(cause));
+              setReceiptState("error");
+            }
+          });
       }
     }
     return () => { active = false; };
@@ -302,13 +351,15 @@ export function SocialPanel({
 
   async function copyReceipt(roundEvidence: ProfileRound) {
     if (!address) return;
+    const link = receiptUrl(window.location.href, address, roundEvidence.marketId);
+    setReceiptLink(link);
     try {
-      await navigator.clipboard.writeText(receiptUrl(window.location.href, address, roundEvidence.marketId));
+      await navigator.clipboard.writeText(link);
       setActionState("done");
       setActionMessage("Verified result link copied.");
-    } catch (cause) {
-      setActionState("error");
-      setActionMessage(errorMessage(cause));
+    } catch {
+      setActionState("done");
+      setActionMessage("Result link created. Your browser blocked automatic copying, so copy the visible link below.");
     }
   }
 
@@ -336,18 +387,20 @@ export function SocialPanel({
       {route.kind === "receipt" && (
         <article className="share-card">
           <p className="eyebrow">Shared result receipt</p>
-          {!receiptRound ? <span aria-live="polite">{error ?? "Rebuilding this claim from DreamDEX…"}</span> : (
-            <><h3>{shortAddress(route.wallet)} called {callLabel(receiptRound.question, receiptRound.side)}</h3><strong className={`share-result ${receiptRound.state}`}>{receiptRound.state}</strong><p>{receiptRound.question}</p><div className="proof-links"><a href={explorerTransaction(receiptRound.fillTransactionHash)} target="_blank" rel="noreferrer">Verify fill ↗</a>{receiptRound.settlementTransactionHash && <a href={explorerTransaction(receiptRound.settlementTransactionHash)} target="_blank" rel="noreferrer">Verify result ↗</a>}</div></>
-          )}
+          {receiptState === "loading" && <span aria-live="polite">Rebuilding this claim from DreamDEX…</span>}
+          {receiptState === "not-found" && <span role="status">No verified result was found for this wallet and Event Contract.</span>}
+          {receiptState === "error" && <span role="alert">{receiptError ?? "This result could not be verified."}</span>}
+          {receiptState === "ready" && receiptRound && <><h3>{shortAddress(route.wallet)} called {callLabel(receiptRound.question, receiptRound.side)}</h3><strong className={`share-result ${receiptRound.state}`}>{receiptRound.state}</strong><p>{receiptRound.question}</p><div className="proof-links"><a href={explorerTransaction(receiptRound.fillTransactionHash)} target="_blank" rel="noreferrer">Verify fill ↗</a>{receiptRound.settlementTransactionHash && <a href={explorerTransaction(receiptRound.settlementTransactionHash)} target="_blank" rel="noreferrer">Verify result ↗</a>}</div></>}
         </article>
       )}
 
       {route.kind === "challenge" && (
         <article className="share-card">
           <p className="eyebrow">Friend challenge</p>
-          {!challenge ? <span aria-live="polite">{error ?? "Rebuilding both records from DreamDEX…"}</span> : (
-            <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>Status: {challenge.status}. This app compares independent trades in one market and never escrows funds.</p><div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>Accept with verified wallet</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}</>
-          )}
+          {challengeState === "loading" && <span aria-live="polite">Rebuilding both records from DreamDEX…</span>}
+          {challengeState === "not-found" && <span role="status">This challenge was not found or is no longer available.</span>}
+          {challengeState === "error" && <span role="alert">{challengeError ?? "This challenge could not be verified."}</span>}
+          {challengeState === "ready" && challenge && challengeEvidence && <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>Status: {challenge.status}. This app compares independent trades in one market and never escrows funds.</p><div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>Accept with verified wallet</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}</>}
         </article>
       )}
 
@@ -376,6 +429,7 @@ export function SocialPanel({
           <button className="secondary" onClick={() => void createChallenge()} disabled={actionState === "working"} aria-disabled={!round || undefined}>{round ? "Copy challenge link" : "No live round to challenge"}</button>
           {challengeLink && <label><span>Shareable challenge link</span><input readOnly value={challengeLink} onFocus={(event) => event.currentTarget.select()} /></label>}
           {latestSettled && <button className="secondary" onClick={() => void copyReceipt(latestSettled)}>Copy latest result</button>}
+          {receiptLink && <label><span>Shareable result link</span><input readOnly value={receiptLink} onFocus={(event) => event.currentTarget.select()} /></label>}
           {actionMessage && <p aria-live="polite" className={actionState === "error" ? "action-message error-text" : "action-message"}>{actionMessage}</p>}
         </aside>
       </div>
