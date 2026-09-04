@@ -1,10 +1,11 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Address, EIP1193Provider } from "viem";
 import type { LiveRound } from "../../src/app/runtime.js";
 
 const runtimeMocks = vi.hoisted(() => ({
+  constructed: vi.fn(),
   loadMarkets: vi.fn(),
   refreshRound: vi.fn(),
   close: vi.fn(),
@@ -20,6 +21,9 @@ vi.mock("wagmi", () => ({
 
 vi.mock("../../src/app/runtime.js", () => ({
   BrowserDreamDexRuntime: class {
+    constructor() {
+      runtimeMocks.constructed();
+    }
     loadMarkets = runtimeMocks.loadMarkets;
     refreshRound = runtimeMocks.refreshRound;
     close = runtimeMocks.close;
@@ -27,6 +31,7 @@ vi.mock("../../src/app/runtime.js", () => ({
 }));
 
 import { App, resolveConnectedWallet } from "../../src/app/App.js";
+import { MARKET_DISCOVERY_DEADLINE_MS } from "../../src/app/marketDiscovery.js";
 
 const marketId = `0x${"1".repeat(64)}`;
 
@@ -66,6 +71,7 @@ describe("live round resilience", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_DREAMDEX_OPERATOR_ID", "2");
     vi.stubEnv("VITE_DREAMDEX_VENUE_ID", `0x${"2".repeat(64)}`);
+    runtimeMocks.constructed.mockReset();
     runtimeMocks.loadMarkets.mockReset();
     runtimeMocks.refreshRound.mockReset();
     runtimeMocks.close.mockReset();
@@ -73,6 +79,7 @@ describe("live round resilience", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.unstubAllEnvs();
   });
 
@@ -144,6 +151,61 @@ describe("live round resilience", () => {
     expect(screen.getByRole("button", { name: /No.*NO contract/i })).toBeTruthy();
     expect(screen.getByText(/2 candidates were excluded/i)).toBeTruthy();
     expect(screen.getByText(/bounded market list has more results/i)).toBeTruthy();
+  });
+
+  it("retires a timed-out runtime and recovers with a fresh instance", async () => {
+    vi.useFakeTimers();
+    const oldRound = liveRound(
+      BigInt(Math.floor(Date.now() / 1_000) + 900),
+      "Old result that arrived too late",
+    );
+    const recoveredRound = liveRound(
+      BigInt(Math.floor(Date.now() / 1_000) + 900),
+      "Recovered live market",
+      { id: `0x${"4".repeat(64)}` },
+    );
+    let resolveOldRequest!: (value: {
+      rounds: LiveRound[];
+      rejectedCount: number;
+      truncated: boolean;
+    }) => void;
+    runtimeMocks.loadMarkets
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        resolveOldRequest = resolve;
+      }))
+      .mockResolvedValueOnce({ rounds: [recoveredRound], rejectedCount: 0, truncated: false });
+
+    const { unmount } = render(<App />);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(runtimeMocks.loadMarkets).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MARKET_DISCOVERY_DEADLINE_MS);
+    });
+    expect(screen.getByRole("alert").textContent).toMatch(/market discovery timed out/i);
+    expect(runtimeMocks.close).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh markets" }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(runtimeMocks.constructed).toHaveBeenCalledTimes(2);
+    expect(runtimeMocks.loadMarkets).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByText("Recovered live market").length).toBeGreaterThan(0);
+
+    await act(async () => {
+      resolveOldRequest({ rounds: [oldRound], rejectedCount: 0, truncated: false });
+      await Promise.resolve();
+    });
+    expect(screen.queryByText("Old result that arrived too late")).toBeNull();
+    expect(screen.getAllByText("Recovered live market").length).toBeGreaterThan(0);
+
+    unmount();
+    expect(runtimeMocks.close).toHaveBeenCalledTimes(2);
   });
 });
 

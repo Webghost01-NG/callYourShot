@@ -9,6 +9,10 @@ import { readSocialConfig } from "../social/config.js";
 import { formatUnits, parseDecimalUnits } from "./amounts.js";
 import { ProfilePanel, type ProfileLoadState } from "./ProfilePanel.js";
 import { cadenceLabel, outcomeLabels } from "./marketLabels.js";
+import {
+  MarketDiscoveryTimeoutError,
+  withMarketDiscoveryDeadline,
+} from "./marketDiscovery.js";
 import { isUserRejectedRequest, publicErrorMessage, transactionFailureMessage } from "./errors.js";
 import { buildCallQuote, selectedOutcomePrice } from "./quote.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
@@ -118,8 +122,20 @@ export function App() {
   const [profileResult, setProfileResult] = useState<ReconciledProfile>();
   const [profileError, setProfileError] = useState<string>();
   const [now, setNow] = useState(Date.now());
+  const [runtimeGeneration, setRuntimeGeneration] = useState(0);
   const roundRequestId = useRef(0);
+  const closedRuntimes = useRef(new WeakSet<BrowserDreamDexRuntime>());
   const selectedMarketIdRef = useRef<Hex | undefined>(undefined);
+
+  const closeRuntimeOnce = useCallback((instance: BrowserDreamDexRuntime) => {
+    if (closedRuntimes.current.has(instance)) return;
+    closedRuntimes.current.add(instance);
+    try {
+      void Promise.resolve(instance.close()).catch(() => undefined);
+    } catch {
+      // The runtime is already retired; a synchronous close failure must not block recovery.
+    }
+  }, []);
 
   useEffect(() => {
     selectedMarketIdRef.current = selectedMarketId;
@@ -147,8 +163,9 @@ export function App() {
       setLoadState("loading");
       setLoadError(undefined);
     }
+    const activeRuntime = runtime;
     try {
-      const next = await runtime.loadMarkets();
+      const next = await withMarketDiscoveryDeadline(activeRuntime.loadMarkets());
       if (requestId !== roundRequestId.current) return;
       setRounds(next.rounds);
       setSelectedMarketId((current) => next.rounds.some((item) =>
@@ -162,7 +179,13 @@ export function App() {
       ) ?? next.rounds[0];
       setLoadState(selectedRound && hasBuyLiquidity(selectedRound) ? "ready" : "empty");
     } catch (error) {
-      if (requestId !== roundRequestId.current || silent) return;
+      if (requestId !== roundRequestId.current) return;
+      if (error instanceof MarketDiscoveryTimeoutError) {
+        closeRuntimeOnce(activeRuntime);
+        setRuntime((current) => current === activeRuntime ? undefined : current);
+      } else if (silent) {
+        return;
+      }
       const message = errorMessage(error);
       setRounds([]);
       setSelectedMarketId(undefined);
@@ -170,7 +193,17 @@ export function App() {
       setLoadError(message);
       setLoadState(message.includes("headroom") || message.includes("Trading") ? "stale" : "error");
     }
-  }, [configResult, runtime]);
+  }, [closeRuntimeOnce, configResult, runtime]);
+
+  const retryMarkets = useCallback(() => {
+    if (runtime) {
+      void loadMarkets();
+      return;
+    }
+    setLoadState("loading");
+    setLoadError(undefined);
+    setRuntimeGeneration((current) => current + 1);
+  }, [loadMarkets, runtime]);
 
   const loadProfile = useCallback(async () => {
     if (!runtime || !address || !walletClient) return;
@@ -204,9 +237,9 @@ export function App() {
     return () => {
       active = false;
       roundRequestId.current += 1;
-      if (instance) void instance.close();
+      if (instance) closeRuntimeOnce(instance);
     };
-  }, [configResult]);
+  }, [closeRuntimeOnce, configResult, runtimeGeneration]);
 
   useEffect(() => {
     if (runtime) void loadMarkets();
@@ -448,7 +481,7 @@ export function App() {
           <section className="state-card error" role="alert">
             <strong>{loadState === "stale" ? "This market just locked" : "Live markets unavailable"}</strong>
             <span>{loadError}</span>
-            <button onClick={() => void loadMarkets()}>Refresh markets</button>
+            <button onClick={retryMarkets}>Refresh markets</button>
           </section>
         )}
         {rounds.length > 0 && loadState !== "loading" && (
