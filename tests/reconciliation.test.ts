@@ -38,7 +38,7 @@ function fill(overrides: Partial<IndexedProfileFill> = {}): IndexedProfileFill {
   };
 }
 
-function indexedMarket(): IndexedProfileMarket {
+function indexedMarket(overrides: Partial<IndexedProfileMarket> = {}): IndexedProfileMarket {
   return {
     marketId,
     marketType: "BINARY",
@@ -51,6 +51,7 @@ function indexedMarket(): IndexedProfileMarket {
     intervalSec: "900",
     operatorId: 2,
     venueId,
+    ...overrides,
   };
 }
 
@@ -177,4 +178,41 @@ test("excludes fills before a server-authoritative league enrollment time", asyn
     .reconcile(account, { ...criteria, minimumTimestampSec: 150n });
   assert.equal(result.profile.rounds.length, 1);
   assert.equal(result.profile.rounds[0]!.timestampSec, 200n);
+});
+
+test("reconciles every binary asset and cadence from the trusted origin when filters are omitted", async () => {
+  const ethMarketId = `0x${"9".repeat(64)}` as Hex;
+  const markets = new Map([
+    [marketId.toLowerCase(), indexedMarket()],
+    [ethMarketId.toLowerCase(), indexedMarket({
+      marketId: ethMarketId,
+      asset: "ETH",
+      question: "ETH closes at or above its opening price",
+      intervalSec: "300",
+    })],
+  ]);
+  const rows = [fill(), fill({
+    id: "200_1",
+    market: ethMarketId,
+    timestamp: "200",
+    makerOrderId: "9",
+  })];
+  const source = client(rows, {
+    getBinaryMarket: async (id) => markets.get(id.toLowerCase()) ?? null,
+  });
+  const result = await new DreamDexProfileReconciler(source, async () => settlement())
+    .reconcile(account, { origin: criteria.origin });
+  assert.deepEqual(result.profile.rounds.map((round) => round.question).sort(), [
+    "BTC closes at or above its opening price",
+    "ETH closes at or above its opening price",
+  ]);
+});
+
+test("still excludes markets from an untrusted origin in multi-market mode", async () => {
+  const source = client([fill()], {
+    getBinaryMarket: async () => indexedMarket({ operatorId: 99 }),
+  });
+  const result = await new DreamDexProfileReconciler(source, async () => settlement())
+    .reconcile(account, { origin: criteria.origin });
+  assert.equal(result.profile.rounds.length, 0);
 });

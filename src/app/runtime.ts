@@ -30,10 +30,18 @@ const poolParametersAbi = parseAbi([
   "function getOrderBookParameters() view returns (uint256 tickSize, uint256 minQuantity, uint256 lotSize)",
 ]);
 const approveAbi = parseAbi(["function approve(address spender,uint256 amount) returns (bool)"]);
+const erc20MetadataAbi = parseAbi(["function symbol() view returns (string)"]);
 
 export interface LiveRound {
   market: DiscoveredMarket;
   book: BinaryOrderBook;
+  collateralSymbol: string;
+}
+
+export interface LiveMarketBoard {
+  rounds: LiveRound[];
+  rejectedCount: number;
+  truncated: boolean;
 }
 
 export interface OrderPlan {
@@ -64,6 +72,7 @@ export function assertPlanAuthorization(
 export class BrowserDreamDexRuntime {
   private readonly exchange: SomniaMarkets;
   private readonly publicClient;
+  private readonly collateralSymbols = new Map<string, Promise<string>>();
 
   constructor(private readonly config: PublicAppConfig) {
     this.exchange = new SomniaMarkets({
@@ -99,27 +108,78 @@ export class BrowserDreamDexRuntime {
     );
   }
 
-  async loadRound(): Promise<LiveRound> {
+  private marketCriteria() {
+    return {
+      origin: { operatorId: this.config.operatorId, venueId: this.config.venueId },
+      minimumHeadroomSec: 45n,
+    };
+  }
+
+  private async readRound(market: DiscoveredMarket): Promise<LiveRound> {
+    const key = market.collateral.toLowerCase();
+    let symbol = this.collateralSymbols.get(key);
+    if (!symbol) {
+      symbol = this.publicClient.readContract({
+        address: market.collateral,
+        abi: erc20MetadataAbi,
+        functionName: "symbol",
+      }).then((value) => {
+        const clean = value.trim().slice(0, 16);
+        return clean || `${market.collateral.slice(0, 6)}…${market.collateral.slice(-4)}`;
+      }).catch(() => `${market.collateral.slice(0, 6)}…${market.collateral.slice(-4)}`);
+      this.collateralSymbols.set(key, symbol);
+    }
+    const [book, collateralSymbol] = await Promise.all([
+      this.exchange.client.getBinaryOrderBook(market.pool, {
+        decimals: market.indexed.quoteDecimals,
+        depth: 10,
+      }),
+      symbol,
+    ]);
+    return { market, book, collateralSymbol };
+  }
+
+  async loadMarkets(): Promise<LiveMarketBoard> {
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        const market = await this.adapter().discoverMarket({
-          asset: "BTC",
-          intervalSec: 900,
-          origin: { operatorId: this.config.operatorId, venueId: this.config.venueId },
-          minimumHeadroomSec: 45n,
+        const discovery = await this.adapter().discoverMarkets(this.marketCriteria());
+        const rounds: LiveRound[] = [];
+        let rejectedCount = discovery.rejectedCount;
+        for (let start = 0; start < discovery.markets.length; start += 4) {
+          const batch = discovery.markets.slice(start, start + 4);
+          const settled = await Promise.allSettled(batch.map((market) => this.readRound(market)));
+          for (const result of settled) {
+            if (result.status === "fulfilled") rounds.push(result.value);
+            else rejectedCount += 1;
+          }
+        }
+        if (rounds.length === 0) {
+          throw new Error("No verified live Event Contract has a readable order book.");
+        }
+        rounds.sort((left, right) => {
+          const leftLiquid = left.book.yesAsks.length > 0 || left.book.noAsks.length > 0;
+          const rightLiquid = right.book.yesAsks.length > 0 || right.book.noAsks.length > 0;
+          if (leftLiquid !== rightLiquid) return leftLiquid ? -1 : 1;
+          return left.market.expirySec < right.market.expirySec ? -1
+            : left.market.expirySec > right.market.expirySec ? 1 : 0;
         });
-        const book = await this.exchange.client.getBinaryOrderBook(market.pool, {
-          decimals: market.indexed.quoteDecimals,
-          depth: 10,
-        });
-        return { market, book };
+        return { rounds, rejectedCount, truncated: discovery.truncated };
       } catch (error) {
         lastError = error;
         if (attempt === 0) await new Promise((resolve) => window.setTimeout(resolve, 750));
       }
     }
     throw lastError;
+  }
+
+  async loadRound(): Promise<LiveRound> {
+    return (await this.loadMarkets()).rounds[0]!;
+  }
+
+  async refreshRound(marketId: Hex): Promise<LiveRound> {
+    const market = await this.adapter().discoverMarketById(this.marketCriteria(), marketId);
+    return this.readRound(market);
   }
 
   async loadProfile(account: Address, walletClient: WalletClient) {
@@ -149,8 +209,6 @@ export class BrowserDreamDexRuntime {
       (marketId) => adapter.getSettlement(marketId),
     );
     return reconciler.reconcile(account, {
-      asset: "BTC",
-      intervalSec: 900,
       origin: { operatorId: this.config.operatorId, venueId: this.config.venueId },
       minimumTimestampSec,
     });

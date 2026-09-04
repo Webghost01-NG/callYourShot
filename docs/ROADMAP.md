@@ -14,6 +14,7 @@ request is merged.
 | Profiles | #6 | Settlement reconciliation and skill record | #3 and #4 |
 | Social | #7 | Leaderboard, challenge, and result sharing | #6 and identity policy |
 | Hardening | #8 | Reliable, accessible judge-ready product | #4 through #7 |
+| Multi-market lobby | #22 | Trusted live binary Event Contract selection | #8 and approved discovery architecture |
 
 ## Phase 1 evidence requirements
 

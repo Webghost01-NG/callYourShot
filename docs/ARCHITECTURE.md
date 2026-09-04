@@ -17,9 +17,10 @@ trusted operator/venue origin from caller configuration and keys markets by
 wallet-bound SDK writer only through dependency injection.
 
 Issue #6 extends this boundary with database-free profile reconciliation. The
-adapter pages indexed account fills, filters the configured BTC series, and
-requires on-chain market state plus the permanent settlement record before a
-result can score. The pure profile reducer applies `CYS-EDGE-v1`, streak,
+adapter pages indexed account fills, filters binary markets to the configured
+operator and venue, and requires on-chain market state plus the permanent
+settlement record before a result can score. The pure profile reducer applies
+`CYS-EDGE-v1`, streak,
 accuracy, fee-aware return, and drawdown rules. See
 [PROFILE_RECONCILIATION.md](PROFILE_RECONCILIATION.md).
 
@@ -28,6 +29,13 @@ enrollment, optional names, and noncustodial challenge coordination. Scores and
 challenge results are never authoritative database fields; the browser rebuilds
 them from DreamDEX after a server-timestamped enrollment boundary. See
 [SOCIAL_COMPETITION.md](SOCIAL_COMPETITION.md).
+
+Issue #22 broadens discovery without broadening trust. The adapter performs a
+bounded, paginated live-binary sweep for the configured operator and venue,
+verifies every candidate against its market contract with expiry headroom, and
+limits concurrent contract and book reads. The UI receives only verified
+markets, preserves selection by `marketId`, and refreshes that exact ID before
+building an order. It never silently switches a reviewed call to another event.
 
 The core does not select or depend on:
 
@@ -57,7 +65,8 @@ The core does not select or depend on:
 unit fixtures and are never presented as current market data.
 
 `npm run check:live` is an opt-in read-only Shannon check. It requires
-`DREAMDEX_OPERATOR_ID` and `DREAMDEX_VENUE_ID`, then discovers a live market,
-checks on-chain status/headroom, reads pool parameters, and reads the four-sided
-book. Missing or failed upstream data produces an error, never a fabricated
-empty success.
+`DREAMDEX_OPERATOR_ID` and `DREAMDEX_VENUE_ID`, then discovers the bounded live
+binary-market set, checks on-chain status/headroom, reads pool parameters, and
+reads each four-sided book. Optional validation asset/cadence variables can
+narrow the check. Missing or failed upstream data produces an error, never a
+fabricated empty success.

@@ -47,8 +47,6 @@ const reconciler = new DreamDexProfileReconciler(
 
 try {
   const result = await reconciler.reconcile(account as Address, {
-    asset: "BTC",
-    intervalSec: 900,
     origin: { operatorId, venueId: venueId as Hex },
   });
   process.stdout.write(`${JSON.stringify(result, (_key, value) =>

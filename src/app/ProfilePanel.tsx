@@ -3,6 +3,7 @@ import type { Hex } from "viem";
 import { formatRational, type Rational } from "../core/profile.js";
 import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
 import { formatUnits } from "./amounts.js";
+import { callLabel } from "./marketLabels.js";
 
 export type ProfileLoadState = "idle" | "loading" | "ready" | "error";
 
@@ -49,7 +50,7 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
         <div>
           <p className="eyebrow">Your public track record</p>
           <h2 id="profile-title">Skill, backed by receipts.</h2>
-          <p>Every result below comes from your first real buy in a BTC round and its finalized outcome.</p>
+          <p>Every result below comes from your first real buy in an eligible Event Contract and its finalized outcome.</p>
         </div>
         {connected && <button className="secondary refresh-profile" onClick={onRefresh} disabled={state === "loading"}>Refresh record</button>}
       </div>
@@ -98,12 +99,12 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
           <div className="profile-history">
             <h3>Call history</h3>
             {profile.rounds.length === 0 ? (
-              <div className="profile-empty"><span>No qualifying BTC calls were found for this wallet.</span></div>
+              <div className="profile-empty"><span>No qualifying Event Contract calls were found for this wallet.</span></div>
             ) : profile.rounds.map((round) => (
               <article className="history-row" key={round.marketId}>
                 <div className={`history-direction ${round.side.toLowerCase()}`}>{round.side === "UP" ? "↗" : "↘"}</div>
                 <div className="history-main">
-                  <div><strong>{round.side} call</strong><span>{dateTime(round.timestampSec)}</span></div>
+                  <div><strong>{callLabel(round.question, round.side)} call</strong><span>{dateTime(round.timestampSec)}</span></div>
                   <p>{round.question}</p>
                   <div className="proof-links">
                     <a href={explorerTransaction(round.fillTransactionHash)} target="_blank" rel="noreferrer">Fill receipt ↗</a>

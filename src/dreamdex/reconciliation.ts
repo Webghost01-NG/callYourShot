@@ -69,8 +69,8 @@ export interface ProfileEvidenceClient {
   ): Promise<IndexedProfileFill[]>;
   getBinaryMarket(marketId: string): Promise<IndexedProfileMarket | null>;
   listPastBinaryMarkets?(options: {
-    asset: string;
-    intervalSec: number;
+    asset?: string;
+    intervalSec?: number;
     operatorId: number;
     venueId: string;
     limit: number;
@@ -89,8 +89,8 @@ export interface ProfileEvidenceClient {
 }
 
 export interface ProfileCriteria {
-  asset: string;
-  intervalSec: number;
+  asset?: string;
+  intervalSec?: number;
   origin: VenueOrigin;
   minimumTimestampSec?: bigint;
 }
@@ -129,8 +129,8 @@ async function readWithRetry<T>(read: () => Promise<T>): Promise<T> {
 }
 
 function supportedMarket(market: IndexedProfileMarket, criteria: ProfileCriteria): boolean {
-  return market.asset.toUpperCase() === criteria.asset.toUpperCase()
-    && Number(market.intervalSec) === criteria.intervalSec
+  return (criteria.asset === undefined || market.asset.toUpperCase() === criteria.asset.toUpperCase())
+    && (criteria.intervalSec === undefined || Number(market.intervalSec) === criteria.intervalSec)
     && market.operatorId === criteria.origin.operatorId
     && lower(market.venueId) === lower(criteria.origin.venueId);
 }
@@ -240,8 +240,8 @@ export class DreamDexProfileReconciler {
 
     const recentSupportedMarkets = grouped.size > 0 && this.client.listPastBinaryMarkets
       ? readWithRetry(() => this.client.listPastBinaryMarkets!({
-          asset: criteria.asset,
-          intervalSec: criteria.intervalSec,
+          ...(criteria.asset === undefined ? {} : { asset: criteria.asset }),
+          ...(criteria.intervalSec === undefined ? {} : { intervalSec: criteria.intervalSec }),
           operatorId: criteria.origin.operatorId,
           venueId: criteria.origin.venueId,
           limit: 100,
