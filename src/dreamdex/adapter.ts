@@ -20,10 +20,16 @@ export interface VenueOrigin {
 }
 
 export interface MarketCriteria {
-  asset: string;
-  intervalSec: number;
+  asset?: string;
+  intervalSec?: number;
   origin: VenueOrigin;
   minimumHeadroomSec: bigint;
+}
+
+export interface MarketDiscoveryResult {
+  markets: DiscoveredMarket[];
+  rejectedCount: number;
+  truncated: boolean;
 }
 
 export interface DiscoveredMarket {
@@ -50,6 +56,11 @@ type ReadClient = Pick<
 
 type OrderBuilder = Pick<Trader, "buildPlaceOrder" | "getSettlement">;
 
+const LIVE_PAGE_SIZE = 25;
+const MAX_LIVE_PAGES = 4;
+const MAX_DISCOVERED_MARKETS = 12;
+const VERIFICATION_CONCURRENCY = 4;
+
 export class DreamDexAdapter {
   constructor(
     private readonly client: ReadClient,
@@ -62,37 +73,38 @@ export class DreamDexAdapter {
     private readonly nowSec: () => bigint = () => BigInt(Math.floor(Date.now() / 1_000)),
   ) {}
 
-  async discoverMarket(criteria: MarketCriteria): Promise<DiscoveredMarket> {
-    let rows: BinaryMarket[];
-    try {
-      rows = await this.client.listLiveBinaryMarkets({
-        asset: criteria.asset,
-        intervalSec: criteria.intervalSec,
-        operatorId: criteria.origin.operatorId,
-        venueId: criteria.origin.venueId,
-        status: "Trading",
-      });
-    } catch (cause) {
-      throw new UpstreamUnavailableError("DreamDEX market discovery failed", { cause });
-    }
+  private matchesCriteria(row: BinaryMarket, criteria: MarketCriteria): boolean {
+    return row.operatorId === criteria.origin.operatorId
+      && row.venueId?.toLowerCase() === criteria.origin.venueId.toLowerCase()
+      && (criteria.asset === undefined || row.asset?.toUpperCase() === criteria.asset.toUpperCase())
+      && (criteria.intervalSec === undefined || Number(row.intervalSec) === criteria.intervalSec);
+  }
 
-    for (const row of rows) {
-      if (
-        row.operatorId !== criteria.origin.operatorId
-        || row.venueId?.toLowerCase() !== criteria.origin.venueId.toLowerCase()
-      ) continue;
-      const marketId = row.marketId as Hex;
+  private async verifyCandidate(
+    row: BinaryMarket,
+    criteria: MarketCriteria,
+  ): Promise<DiscoveredMarket | null> {
+    if (!this.matchesCriteria(row, criteria) || !/^0x[0-9a-fA-F]{64}$/.test(row.marketId)) {
+      return null;
+    }
+    const marketId = row.marketId as Hex;
+    try {
       const onchain = await this.client.getMarketOnchain(marketId);
-      try {
-        assertTradingWithHeadroom({
-          status: onchain.status,
-          expirySec: onchain.expiry,
-          nowSec: this.nowSec(),
-          minimumHeadroomSec: criteria.minimumHeadroomSec,
-        });
-      } catch {
-        continue;
-      }
+      if (
+        row.poolAddress.toLowerCase() !== onchain.pool.toLowerCase()
+        || row.marketAddress.toLowerCase() !== onchain.marketAddress.toLowerCase()
+        || row.collateral.toLowerCase() !== onchain.collateral.toLowerCase()
+        || BigInt(row.yesTokenId) !== onchain.yesId
+        || BigInt(row.noTokenId) !== onchain.noId
+        || row.quoteDecimals !== onchain.decimals
+      ) return null;
+      assertTradingWithHeadroom({
+        status: onchain.status,
+        expirySec: onchain.expiry,
+        nowSec: this.nowSec(),
+        minimumHeadroomSec: criteria.minimumHeadroomSec,
+      });
+      if (!Number.isSafeInteger(row.quoteDecimals) || row.quoteDecimals < 0) return null;
       const priceScale = 10n ** BigInt(row.quoteDecimals);
       return {
         marketId,
@@ -107,8 +119,82 @@ export class DreamDexAdapter {
         indexed: row,
         onchain,
       };
+    } catch {
+      return null;
     }
-    throw new UpstreamUnavailableError("No eligible live DreamDEX market was found");
+  }
+
+  async discoverMarkets(criteria: MarketCriteria): Promise<MarketDiscoveryResult> {
+    const markets: DiscoveredMarket[] = [];
+    const seen = new Set<string>();
+    let rejectedCount = 0;
+    let truncated = false;
+    for (let page = 0; page < MAX_LIVE_PAGES && markets.length < MAX_DISCOVERED_MARKETS; page += 1) {
+      let rows: BinaryMarket[];
+      try {
+        rows = await this.client.listLiveBinaryMarkets({
+          ...(criteria.asset === undefined ? {} : { asset: criteria.asset }),
+          ...(criteria.intervalSec === undefined ? {} : { intervalSec: criteria.intervalSec }),
+          operatorId: criteria.origin.operatorId,
+          venueId: criteria.origin.venueId,
+          status: "Trading",
+          limit: LIVE_PAGE_SIZE,
+          offset: page * LIVE_PAGE_SIZE,
+        });
+      } catch (cause) {
+        if (markets.length > 0) {
+          truncated = true;
+          break;
+        }
+        throw new UpstreamUnavailableError("DreamDEX market discovery failed", { cause });
+      }
+      const candidates = rows.filter((row) => {
+        if (typeof row.marketId !== "string") {
+          rejectedCount += 1;
+          return false;
+        }
+        const key = row.marketId.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      for (let start = 0; start < candidates.length && markets.length < MAX_DISCOVERED_MARKETS; start += VERIFICATION_CONCURRENCY) {
+        const batch = candidates.slice(start, start + VERIFICATION_CONCURRENCY);
+        const verified = await Promise.all(batch.map((row) => this.verifyCandidate(row, criteria)));
+        for (const market of verified) {
+          if (!market) {
+            rejectedCount += 1;
+          } else if (markets.length < MAX_DISCOVERED_MARKETS) {
+            markets.push(market);
+          } else {
+            truncated = true;
+          }
+        }
+      }
+      if (rows.length < LIVE_PAGE_SIZE) break;
+      if (page === MAX_LIVE_PAGES - 1 || markets.length === MAX_DISCOVERED_MARKETS) truncated = true;
+    }
+    if (markets.length === 0) {
+      throw new UpstreamUnavailableError("No eligible live DreamDEX Event Contract was found");
+    }
+    return { markets, rejectedCount, truncated };
+  }
+
+  async discoverMarket(criteria: MarketCriteria): Promise<DiscoveredMarket> {
+    return (await this.discoverMarkets(criteria)).markets[0]!;
+  }
+
+  async discoverMarketById(criteria: MarketCriteria, marketId: Hex): Promise<DiscoveredMarket> {
+    let indexed: BinaryMarket | null;
+    try {
+      indexed = await this.client.getBinaryMarket(marketId);
+    } catch (cause) {
+      throw new UpstreamUnavailableError("DreamDEX market refresh failed", { cause });
+    }
+    if (!indexed) throw new UpstreamUnavailableError("The selected Event Contract is unavailable");
+    const market = await this.verifyCandidate(indexed, criteria);
+    if (!market) throw new UpstreamUnavailableError("The selected Event Contract is no longer tradable");
+    return market;
   }
 
   async prepareOrder(

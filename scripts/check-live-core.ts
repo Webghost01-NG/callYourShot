@@ -14,6 +14,8 @@ const httpRpcUrl = process.env.SOMNIA_HTTP_RPC_URL
   ?? "https://dream-rpc.somnia.network/";
 const operatorText = process.env.DREAMDEX_OPERATOR_ID;
 const venueId = process.env.DREAMDEX_VENUE_ID;
+const asset = process.env.VALIDATION_ASSET?.trim() || undefined;
+const intervalText = process.env.VALIDATION_INTERVAL_SEC?.trim();
 const binaryModule = SOMNIA_TESTNET_ADDRESSES.binaryModule;
 
 if (!operatorText || !venueId) {
@@ -28,6 +30,10 @@ if (!Number.isSafeInteger(operatorId) || operatorId < 0) {
 }
 if (!/^0x[0-9a-fA-F]{64}$/.test(venueId)) {
   throw new Error("DREAMDEX_VENUE_ID must be a bytes32 hex value");
+}
+const intervalSec = intervalText === undefined ? undefined : Number(intervalText);
+if (intervalSec !== undefined && (!Number.isSafeInteger(intervalSec) || intervalSec <= 0)) {
+  throw new Error("VALIDATION_INTERVAL_SEC must be a positive integer when supplied");
 }
 
 const exchange = new SomniaMarkets({
@@ -58,37 +64,57 @@ const adapter = new DreamDexAdapter(
   },
 );
 
-const market = await adapter.discoverMarket({
-  asset: process.env.VALIDATION_ASSET ?? "BTC",
-  intervalSec: Number.parseInt(process.env.VALIDATION_INTERVAL_SEC ?? "900", 10),
+const discovery = await adapter.discoverMarkets({
+  ...(asset === undefined ? {} : { asset }),
+  ...(intervalSec === undefined ? {} : { intervalSec }),
   origin: { operatorId, venueId },
   minimumHeadroomSec: 30n,
 });
-const book = await exchange.client.getBinaryOrderBook(market.pool, {
-  decimals: market.indexed.quoteDecimals,
-  depth: 3,
+const bookResults = await Promise.allSettled(discovery.markets.map(async (market) => {
+  const book = await exchange.client.getBinaryOrderBook(market.pool, {
+    decimals: market.indexed.quoteDecimals,
+    depth: 3,
+  });
+  return { market, book };
+}));
+const markets = bookResults.flatMap((result) => {
+  if (result.status === "rejected") return [];
+  const { market, book } = result.value;
+  return [{
+    marketId: market.marketId,
+    asset: market.indexed.asset,
+    question: market.indexed.question,
+    intervalSec: market.indexed.intervalSec,
+    collateral: market.collateral,
+    quoteDecimals: market.indexed.quoteDecimals,
+    pool: market.pool,
+    origin: {
+      operatorId: market.indexed.operatorId,
+      venueId: market.indexed.venueId,
+    },
+    status: market.onchain.status,
+    expiry: market.expirySec.toString(),
+    constraints: Object.fromEntries(
+      Object.entries(market.constraints).map(([key, value]) => [key, value.toString()]),
+    ),
+    bookLevels: {
+      yesBids: book.yesBids.length,
+      yesAsks: book.yesAsks.length,
+      noBids: book.noBids.length,
+      noAsks: book.noAsks.length,
+    },
+  }];
 });
+if (markets.length === 0) throw new Error("Every verified market order book read failed");
 
 const report = JSON.stringify({
   checkedAt: new Date().toISOString(),
   chainId: somniaShannon.id,
-  marketId: market.marketId,
-  pool: market.pool,
-  origin: {
-    operatorId: market.indexed.operatorId,
-    venueId: market.indexed.venueId,
-  },
-  status: market.onchain.status,
-  expiry: market.expirySec.toString(),
-  constraints: Object.fromEntries(
-    Object.entries(market.constraints).map(([key, value]) => [key, value.toString()]),
-  ),
-  bookLevels: {
-    yesBids: book.yesBids.length,
-    yesAsks: book.yesAsks.length,
-    noBids: book.noBids.length,
-    noAsks: book.noAsks.length,
-  },
+  filters: { asset: asset ?? null, intervalSec: intervalSec ?? null },
+  rejectedCount: discovery.rejectedCount,
+  bookReadFailureCount: bookResults.length - markets.length,
+  truncated: discovery.truncated,
+  markets,
 }, null, 2);
 
 await exchange.close();
