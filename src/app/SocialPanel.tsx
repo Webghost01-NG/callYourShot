@@ -313,7 +313,7 @@ export function SocialPanel({
       {route.kind === "receipt" && (
         <article className="share-card">
           <p className="eyebrow">Shared result receipt</p>
-          {!receiptRound ? <span>{error ?? "Rebuilding this claim from DreamDEX…"}</span> : (
+          {!receiptRound ? <span aria-live="polite">{error ?? "Rebuilding this claim from DreamDEX…"}</span> : (
             <><h3>{shortAddress(route.wallet)} called {receiptRound.side}</h3><strong className={`share-result ${receiptRound.state}`}>{receiptRound.state}</strong><p>{receiptRound.question}</p><div className="proof-links"><a href={explorerTransaction(receiptRound.fillTransactionHash)} target="_blank" rel="noreferrer">Verify fill ↗</a>{receiptRound.settlementTransactionHash && <a href={explorerTransaction(receiptRound.settlementTransactionHash)} target="_blank" rel="noreferrer">Verify result ↗</a>}</div></>
           )}
         </article>
@@ -322,7 +322,7 @@ export function SocialPanel({
       {route.kind === "challenge" && (
         <article className="share-card">
           <p className="eyebrow">Friend challenge</p>
-          {!challenge ? <span>{error ?? "Rebuilding both records from DreamDEX…"}</span> : (
+          {!challenge ? <span aria-live="polite">{error ?? "Rebuilding both records from DreamDEX…"}</span> : (
             <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>Status: {challenge.status}. This app compares independent trades in one market and never escrows funds.</p><div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>Accept with verified wallet</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}</>
           )}
         </article>
@@ -351,7 +351,7 @@ export function SocialPanel({
           <label><span>Friend’s wallet</span><input value={invitee} onChange={(event) => setInvitee(event.target.value)} placeholder="0x…" /></label>
           <button className="secondary" onClick={() => void createChallenge()} disabled={!round || actionState === "working"}>Copy challenge link</button>
           {latestSettled && <button className="secondary" onClick={() => void copyReceipt(latestSettled)}>Copy latest result</button>}
-          {actionMessage && <p className={actionState === "error" ? "action-message error-text" : "action-message"}>{actionMessage}</p>}
+          {actionMessage && <p aria-live="polite" className={actionState === "error" ? "action-message error-text" : "action-message"}>{actionMessage}</p>}
         </aside>
       </div>
     </section>

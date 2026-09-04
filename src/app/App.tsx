@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useWalletClient } from "wagmi";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import type { Hex } from "viem";
@@ -70,8 +70,9 @@ export function App() {
   const [profileResult, setProfileResult] = useState<ReconciledProfile>();
   const [profileError, setProfileError] = useState<string>();
   const [now, setNow] = useState(Date.now());
+  const roundRequestId = useRef(0);
 
-  const loadRound = useCallback(async () => {
+  const loadRound = useCallback(async (silent = false) => {
     if (!runtime) {
       if (!configResult.config) {
         setLoadState("error");
@@ -84,14 +85,19 @@ export function App() {
       setLoadError(configResult.error ?? "Application configuration is unavailable.");
       return;
     }
-    setLoadState("loading");
-    setLoadError(undefined);
+    const requestId = ++roundRequestId.current;
+    if (!silent) {
+      setLoadState("loading");
+      setLoadError(undefined);
+    }
     try {
       const next = await runtime.loadRound();
+      if (requestId !== roundRequestId.current) return;
       const hasLiquidity = next.book.yesAsks.length > 0 || next.book.noAsks.length > 0;
       setRound(next);
       setLoadState(hasLiquidity ? "ready" : "empty");
     } catch (error) {
+      if (requestId !== roundRequestId.current || silent) return;
       const message = errorMessage(error);
       setLoadError(message);
       setLoadState(message.includes("headroom") || message.includes("Trading") ? "stale" : "error");
@@ -129,6 +135,7 @@ export function App() {
     });
     return () => {
       active = false;
+      roundRequestId.current += 1;
       if (instance) void instance.close();
     };
   }, [configResult]);
@@ -151,22 +158,56 @@ export function App() {
     return () => window.clearInterval(timer);
   }, []);
 
+  const transactionBlocksRefresh = ["preparing", "review", "authorizing", "submitted", "filled"].includes(txState);
+
+  useEffect(() => {
+    if (!runtime || transactionBlocksRefresh) return;
+    const timer = window.setInterval(() => void loadRound(true), 30_000);
+    return () => window.clearInterval(timer);
+  }, [loadRound, runtime, transactionBlocksRefresh]);
+
+  useEffect(() => {
+    if (
+      !round
+      || transactionBlocksRefresh
+      || (loadState !== "ready" && loadState !== "empty")
+      || now < Number(round.market.expirySec) * 1_000
+    ) return;
+    void loadRound();
+  }, [loadRound, loadState, now, round, transactionBlocksRefresh]);
+
+  useEffect(() => {
+    if (!plan || txState !== "review") return;
+    if (
+      address?.toLowerCase() !== plan.account.toLowerCase()
+      || chainId !== somniaShannon.id
+    ) {
+      setPlan(undefined);
+      setTxError("The wallet or network changed. Review the call again.");
+      setTxState("failed");
+    }
+  }, [address, chainId, plan, txState]);
+
   const side = selected === "UP" ? "BUY_YES" : "BUY_NO";
   const asks = selected === "UP" ? round?.book.yesAsks : round?.book.noAsks;
   const bestAsk = asks?.[0]?.price;
-  const quote = useMemo(() => {
-    if (!round || bestAsk === undefined) return null;
+  const quoteResult = useMemo(() => {
+    if (!round) return { quote: null, error: undefined };
+    if (bestAsk === undefined) {
+      return { quote: null, error: `No ${selected} contracts are available to buy right now.` };
+    }
     try {
-      return buildCallQuote({
+      return { quote: buildCallQuote({
         stake: parseDecimalUnits(stake, round.market.indexed.quoteDecimals),
         side,
         book: round.book,
         constraints: round.market.constraints,
-      });
-    } catch {
-      return null;
+      }), error: undefined };
+    } catch (error) {
+      return { quote: null, error: errorMessage(error) };
     }
-  }, [bestAsk, round, side, stake]);
+  }, [bestAsk, round, selected, side, stake]);
+  const quote = quoteResult.quote;
 
   async function reviewCall() {
     if (!round || !quote) return;
@@ -183,7 +224,10 @@ export function App() {
     setTxState("preparing");
     setTxError(undefined);
     try {
-      if (chainId !== somniaShannon.id) await switchChainAsync({ chainId: somniaShannon.id });
+      if (chainId !== somniaShannon.id) {
+        await switchChainAsync({ chainId: somniaShannon.id });
+        throw new Error("Somnia Testnet is ready. Review the call again before signing.");
+      }
       if (!walletClient) throw new Error("Wallet is still connecting. Try again.");
       const liveRound = await runtime!.loadRound();
       const liveQuote = buildCallQuote({
@@ -299,11 +343,11 @@ export function App() {
 
             <fieldset className="direction-picker" disabled={loadState !== "ready" || txState === "filled"}>
               <legend>What’s your call?</legend>
-              <button className={selected === "UP" ? "direction up selected" : "direction up"} onClick={() => { setSelected("UP"); setTxState("idle"); }}>
+              <button type="button" aria-pressed={selected === "UP"} className={selected === "UP" ? "direction up selected" : "direction up"} onClick={() => { setSelected("UP"); setTxState("idle"); }}>
                 <span className="arrow">↗</span><span><strong>Higher</strong><small>UP contracts</small></span>
                 <b>{selected === "UP" ? probability : round.book.yesAsks[0] ? `${formatUnits(round.book.yesAsks[0].price * 100n, decimals, 0)}%` : "—"}</b>
               </button>
-              <button className={selected === "DOWN" ? "direction down selected" : "direction down"} onClick={() => { setSelected("DOWN"); setTxState("idle"); }}>
+              <button type="button" aria-pressed={selected === "DOWN"} className={selected === "DOWN" ? "direction down selected" : "direction down"} onClick={() => { setSelected("DOWN"); setTxState("idle"); }}>
                 <span className="arrow">↘</span><span><strong>Lower</strong><small>DOWN contracts</small></span>
                 <b>{selected === "DOWN" ? probability : round.book.noAsks[0] ? `${formatUnits(round.book.noAsks[0].price * 100n, decimals, 0)}%` : "—"}</b>
               </button>
@@ -311,8 +355,9 @@ export function App() {
 
             <label className="stake-field">
               <span>Your maximum loss</span>
-              <div><input inputMode="decimal" value={stake} onChange={(event) => { setStake(event.target.value); setTxState("idle"); }} aria-describedby="stake-help" /><b>tUSDC</b></div>
+              <div><input inputMode="decimal" value={stake} onChange={(event) => { setStake(event.target.value); setTxState("idle"); }} aria-describedby={quoteResult.error ? "stake-help quote-error" : "stake-help"} aria-invalid={Boolean(quoteResult.error)} /><b>tUSDC</b></div>
               <small id="stake-help">You cannot lose more than this amount.</small>
+              {quoteResult.error && <small id="quote-error" className="quote-error" role="status">{quoteResult.error}</small>}
             </label>
 
             <div className="receipt-preview">
@@ -322,9 +367,9 @@ export function App() {
             </div>
 
             {txState === "review" && plan ? (
-              <div className="review-panel" role="dialog" aria-label="Review your call">
+              <div className="review-panel" role="group" aria-labelledby="review-title">
                 <p className="eyebrow">Review before signing</p>
-                <h2>{selected === "UP" ? "Higher" : "Lower"} with a maximum loss of {formatUnits(plan.maximumCost, decimals)} tUSDC</h2>
+                <h2 id="review-title">{plan.side === "BUY_YES" ? "Higher" : "Lower"} with a maximum loss of {formatUnits(plan.maximumCost, decimals)} tUSDC</h2>
                 <p>{plan.approval ? "Your wallet will request a bounded token approval, then the trade." : "Your wallet will request the trade."} The call counts only after a real fill is verified. Price protection: {formatUnits(plan.selectedLimitPrice * 100n, decimals, 1)}% maximum.</p>
                 <div className="review-actions"><button className="secondary" onClick={() => setTxState("idle")}>Go back</button><button className="primary" onClick={() => void confirmCall()}>Confirm in wallet</button></div>
               </div>
