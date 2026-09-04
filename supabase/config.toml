@@ -1,0 +1,25 @@
+project_id = "call-your-shot"
+
+[auth]
+site_url = "https://call-your-shot-six.vercel.app"
+additional_redirect_urls = [
+  "https://call-your-shot-six.vercel.app/**",
+  "https://call-your-shot-ll95mx7c8-webghost01-ngs-projects.vercel.app/**",
+  "http://127.0.0.1:5173/**",
+  "http://localhost:5173/**",
+]
+
+[auth.rate_limit]
+web3 = 30
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.email]
+enable_confirmations = true
+max_frequency = "1m0s"
+otp_length = 8
+
+[auth.web3.ethereum]
+enabled = true

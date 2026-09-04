@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Address, EIP1193Provider } from "viem";
 import type { LiveRound } from "../../src/app/runtime.js";
 
 const runtimeMocks = vi.hoisted(() => ({
@@ -22,7 +23,7 @@ vi.mock("../../src/app/runtime.js", () => ({
   },
 }));
 
-import { App } from "../../src/app/App.js";
+import { App, resolveConnectedWallet } from "../../src/app/App.js";
 
 const marketId = `0x${"1".repeat(64)}`;
 
@@ -85,4 +86,29 @@ describe("live round resilience", () => {
     expect(await screen.findByText("Next live round", {}, { timeout: 6_000 })).toBeTruthy();
     expect(runtimeMocks.loadRound).toHaveBeenCalledTimes(2);
   }, 10_000);
+});
+
+describe("wallet connection resolution", () => {
+  it("reuses an already-connected account without reconnecting", async () => {
+    const address = `0x${"1".repeat(40)}` as Address;
+    const connect = vi.fn();
+    const request = vi.fn();
+    const getProvider = vi.fn().mockResolvedValue({
+      request,
+      on: vi.fn(),
+      removeListener: vi.fn(),
+    } as unknown as EIP1193Provider);
+
+    const connection = await resolveConnectedWallet({
+      currentAddress: address,
+      currentChainId: 50_312,
+      connect,
+      getProvider,
+    });
+
+    expect(connect).not.toHaveBeenCalled();
+    expect(getProvider).toHaveBeenCalledWith(50_312);
+    expect(connection.address).toBe(address);
+    expect(connection.walletClient.account?.address).toBe(address);
+  });
 });

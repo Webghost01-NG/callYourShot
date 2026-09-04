@@ -75,6 +75,13 @@ PROFILE_ACCOUNT=<address> DREAMDEX_OPERATOR_ID=<id> DREAMDEX_VENUE_ID=<bytes32> 
 
 ## Live application
 
+Judge-accessible deployment: **https://call-your-shot-six.vercel.app**
+
+The deployment intentionally fails closed when no eligible live DreamDEX round
+or book is available. It never substitutes a sample market. Deployment evidence
+and the remaining owner-operated checks are recorded in
+[the release validation report](docs/RELEASE_VALIDATION.md).
+
 Copy `.env.example` to `.env.local` and provide the public DreamDEX operator and
 venue identity supplied by the event organizer. Never put wallet credentials in
 an environment file.
@@ -103,6 +110,13 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-or-legacy-anon-key>
 If these values are absent, the application labels the league unconfigured and
 does not display invented players. Never expose a service-role or secret key.
 See [the persistence, authentication, RLS, privacy, and abuse design](docs/SOCIAL_COMPETITION.md).
+
+## Hackathon evidence
+
+- [DreamDEX integration and transaction evidence](docs/DREAMDEX_VALIDATION.md)
+- [SDK and documentation feedback](docs/DREAMDEX_FEEDBACK.md)
+- [Judge demo runbook](docs/DEMO_RUNBOOK.md)
+- [Release validation and rollback](docs/RELEASE_VALIDATION.md)
 
 ## Repository policy
 

@@ -20,15 +20,15 @@ function assertDate(value: string, label: string): string {
   return value;
 }
 
-function web3Wallet(user: User): Address | null {
+export function verifiedWeb3Wallet(user: Pick<User, "identities">): Address | null {
   const identity = user.identities?.find((item) =>
     item.provider === "web3"
-    && item.identity_data?.chain === "ethereum"
-    && Number(item.identity_data?.network) === somniaShannon.id
-    && typeof item.identity_data.address === "string"
-    && isAddress(item.identity_data.address),
+    && item.identity_data?.custom_claims?.chain === "ethereum"
+    && Number(item.identity_data?.custom_claims?.network) === somniaShannon.id
+    && typeof item.identity_data.custom_claims.address === "string"
+    && isAddress(item.identity_data.custom_claims.address),
   );
-  return identity ? getAddress(identity.identity_data!.address as string) : null;
+  return identity ? getAddress(identity.identity_data!.custom_claims!.address as string) : null;
 }
 
 type PublicProfileRow = Omit<
@@ -103,7 +103,7 @@ export class SupabaseSocialRepository {
       if (/session|token/i.test(error.message)) return null;
       throw error;
     }
-    return data.user ? web3Wallet(data.user) : null;
+    return data.user ? verifiedWeb3Wallet(data.user) : null;
   }
 
   async signIn(walletClient: WalletClient, expectedAddress: Address): Promise<Address> {
@@ -130,7 +130,7 @@ export class SupabaseSocialRepository {
       signature,
     });
     if (error) throw error;
-    const verified = web3Wallet(data.user);
+    const verified = verifiedWeb3Wallet(data.user);
     if (!verified || verified.toLowerCase() !== expectedAddress.toLowerCase()) {
       await this.client.auth.signOut({ scope: "local" });
       throw new Error("Supabase returned a different Web3 identity than the connected wallet.");

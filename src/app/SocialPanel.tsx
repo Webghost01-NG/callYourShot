@@ -20,7 +20,12 @@ interface SocialPanelProps {
   connected: boolean;
   address?: Address;
   walletClient?: WalletClient;
-  onConnect: () => Promise<void>;
+  onConnect: () => Promise<ConnectedWallet | null>;
+}
+
+export interface ConnectedWallet {
+  address: Address;
+  walletClient: WalletClient;
 }
 
 interface ChallengeEvidence {
@@ -112,6 +117,7 @@ export function SocialPanel({
   const [failedProfiles, setFailedProfiles] = useState(0);
   const [displayName, setDisplayName] = useState("");
   const [invitee, setInvitee] = useState("");
+  const [challengeLink, setChallengeLink] = useState<string>();
   const [actionState, setActionState] = useState<"idle" | "working" | "done" | "error">("idle");
   const [actionMessage, setActionMessage] = useState<string>();
   const [challengeEvidence, setChallengeEvidence] = useState<ChallengeEvidence>();
@@ -196,16 +202,21 @@ export function SocialPanel({
     return () => { active = false; };
   }, [enrollmentByWallet, repository, route, runtime, state]);
 
-  async function ensureLeagueIdentity(): Promise<void> {
-    if (!connected || !address || !walletClient) {
-      await onConnect();
-      throw new Error("Wallet connected. Click again to sign in and join.");
+  async function ensureLeagueIdentity(): Promise<Address> {
+    let expectedAddress = address;
+    let signer = walletClient;
+    if (!connected || !expectedAddress || !signer) {
+      const connection = await onConnect();
+      if (!connection) throw new Error("Wallet connection did not complete.");
+      expectedAddress = connection.address;
+      signer = connection.walletClient;
     }
     let verified = authWallet;
-    if (!verified || verified.toLowerCase() !== address.toLowerCase()) {
-      verified = await repository!.signIn(walletClient, address);
+    if (!verified || verified.toLowerCase() !== expectedAddress.toLowerCase()) {
+      verified = await repository!.signIn(signer, expectedAddress);
       setAuthWallet(verified);
     }
+    return verified;
   }
 
   async function joinLeague() {
@@ -226,15 +237,25 @@ export function SocialPanel({
   }
 
   async function createChallenge() {
-    if (!repository || !round) return;
+    if (!repository) return;
     setActionState("working");
     setActionMessage(undefined);
     try {
+      if (!round) {
+        throw new Error("A challenge needs a live DreamDEX round. The button will unlock when the next eligible round appears.");
+      }
       await ensureLeagueIdentity();
       if (!ownEnrollment) throw new Error("Join the league before challenging a friend.");
       const id = await repository.createChallenge(round.market.marketId, invitee);
       const link = challengeUrl(window.location.href, id);
-      await navigator.clipboard.writeText(link);
+      setChallengeLink(link);
+      try {
+        await navigator.clipboard.writeText(link);
+      } catch {
+        setActionState("done");
+        setActionMessage("Challenge created. Your browser blocked automatic copying, so copy the visible link below.");
+        return;
+      }
       setActionState("done");
       setActionMessage("Challenge link copied. Both players use their own DreamDEX trade; Call Your Shot never holds funds.");
     } catch (cause) {
@@ -349,7 +370,9 @@ export function SocialPanel({
           <h3>Challenge a friend</h3>
           <p>Send the link to any wallet. They join, then each person places their own real trade.</p>
           <label><span>Friend’s wallet</span><input value={invitee} onChange={(event) => setInvitee(event.target.value)} placeholder="0x…" /></label>
-          <button className="secondary" onClick={() => void createChallenge()} disabled={!round || actionState === "working"}>Copy challenge link</button>
+          {!round && <p className="challenge-unavailable" role="status">Waiting for an eligible live DreamDEX round. Challenges cannot be created without a real market.</p>}
+          <button className="secondary" onClick={() => void createChallenge()} disabled={actionState === "working"} aria-disabled={!round || undefined}>{round ? "Copy challenge link" : "No live round to challenge"}</button>
+          {challengeLink && <label><span>Shareable challenge link</span><input readOnly value={challengeLink} onFocus={(event) => event.currentTarget.select()} /></label>}
           {latestSettled && <button className="secondary" onClick={() => void copyReceipt(latestSettled)}>Copy latest result</button>}
           {actionMessage && <p aria-live="polite" className={actionState === "error" ? "action-message error-text" : "action-message"}>{actionMessage}</p>}
         </aside>
