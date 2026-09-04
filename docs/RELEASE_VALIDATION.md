@@ -10,16 +10,16 @@ they are not represented by fixtures or invented records.
 
 - Stable URL: https://call-your-shot-six.vercel.app
 - Immutable URL:
-  https://call-your-shot-kk6x5blye-webghost01-ngs-projects.vercel.app
+  https://call-your-shot-pcrweyfm0-webghost01-ngs-projects.vercel.app
 - Hosting project: `webghost01-ngs-projects/call-your-shot`
-- Deployment ID: `dpl_An33pfS2psAHaSG9qtb63Hq9TUfM`
-- Application source at deployment: commit `a01ad38`
+- Deployment ID: `dpl_4vBt6KVnvNPw7UkMpfUYPhxoCcgK`
+- Application source at deployment: commit `5f10883`
 - Hosting status observed: `Ready`
 - Repository homepage: configured to the stable URL
 - Git integration: connected to `Webghost01-NG/callYourShot`
 
 The immutable deployment was created with the Vercel CLI from a clean working
-tree at commit `a01ad38`. Once this release PR is reviewed and merged, the
+tree at commit `5f10883`. Once this release PR is reviewed and merged, the
 connected Git integration should create a fresh production deployment from
 `main`.
 
@@ -56,10 +56,12 @@ migration histories. No service-role key is present in Vercel or source.
 | Anonymous social reads | Pass | Profiles and challenges returned HTTP 200 with empty real tables |
 | Anonymous social mutation denial | Pass | `enroll_in_league` was denied with HTTP 401 and PostgreSQL code `42501` |
 | Supabase Web3 claim shape | Pass | Client and database read the verified identity from `identity_data.custom_claims`; wrong-network and obsolete flat claims are rejected |
-| Automated core/application suite | Pass | 33 Node tests and 21 Vitest tests passed before release |
+| Authenticated league enrollment | Pass | Owner-operated production check created wallet `0x2981…D196` as provisional profile `ghost` and persisted a display-name update |
+| Automated core/application suite | Pass | 33 Node tests and 23 Vitest tests passed before release |
 | TypeScript and production build | Pass | Completed before the deployment was created |
 | Production claim parser | Pass | The stable deployment returned HTTP 200 and its served social bundle contains the nested-claim parser |
 | Existing wallet signer recovery | Pass | A connected account is resolved from its active connector without a redundant `connectAsync` request |
+| Challenge availability and link fallback | Pass | The UI explains when no real round is available and renders every created link for manual copying |
 
 The visual checks found no clipped primary content at either viewport. The
 no-market snapshot could not exercise the prediction form's keyboard path or a
@@ -67,9 +69,8 @@ wallet transaction, so those are not marked complete here.
 
 ## Outstanding owner-operated acceptance
 
-- Validate authenticated enrollment with the owner wallet, then validate
-  invited-wallet challenge acceptance and cross-wallet RLS denial using two
-  real wallets.
+- Validate invited-wallet challenge acceptance and cross-wallet RLS denial
+  using two real wallets when an eligible live DreamDEX round is available.
 - Authorize a small real UP or DOWN order from the deployed React application,
   confirm an actual `OrderFilled` event, and verify that the profile reconstructs
   the call. A successful transaction with no fill does not satisfy this check.
