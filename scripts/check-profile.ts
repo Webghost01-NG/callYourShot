@@ -5,6 +5,7 @@ import {
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import { createWalletClient, http, type Address, type Hex } from "viem";
 import { DreamDexProfileReconciler } from "../src/dreamdex/reconciliation.js";
+import { flushOutputAndExit } from "./flush-output.js";
 
 const account = process.env.PROFILE_ACCOUNT;
 const operatorText = process.env.DREAMDEX_OPERATOR_ID;
@@ -45,12 +46,17 @@ const reconciler = new DreamDexProfileReconciler(
   },
 );
 
+let report: string;
 try {
   const result = await reconciler.reconcile(account as Address, {
     origin: { operatorId, venueId: venueId as Hex },
   });
-  process.stdout.write(`${JSON.stringify(result, (_key, value) =>
-    typeof value === "bigint" ? value.toString() : value, 2)}\n`);
+  report = JSON.stringify(result, (_key, value) =>
+    typeof value === "bigint" ? value.toString() : value, 2);
 } finally {
   await exchange.close();
 }
+
+// The SDK closes its live machinery but leaves a lazy transport handle alive.
+// Exit only after Node confirms that the complete JSON report was flushed.
+flushOutputAndExit(`${report}\n`);
