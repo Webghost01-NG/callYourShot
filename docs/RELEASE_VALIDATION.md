@@ -10,16 +10,16 @@ they are not represented by fixtures or invented records.
 
 - Stable URL: https://call-your-shot-six.vercel.app
 - Immutable URL:
-  https://call-your-shot-csbukg2qb-webghost01-ngs-projects.vercel.app
+  https://call-your-shot-kk6x5blye-webghost01-ngs-projects.vercel.app
 - Hosting project: `webghost01-ngs-projects/call-your-shot`
-- Deployment ID: `dpl_AK8bjHHoq4AKoV27ehvYUaAjW49W`
-- Application source at deployment: commit `13109fe`
+- Deployment ID: `dpl_An33pfS2psAHaSG9qtb63Hq9TUfM`
+- Application source at deployment: commit `a01ad38`
 - Hosting status observed: `Ready`
 - Repository homepage: configured to the stable URL
 - Git integration: connected to `Webghost01-NG/callYourShot`
 
 The immutable deployment was created with the Vercel CLI from a clean working
-tree at commit `13109fe`. Once this release PR is reviewed and merged, the
+tree at commit `a01ad38`. Once this release PR is reviewed and merged, the
 connected Git integration should create a fresh production deployment from
 `main`.
 
@@ -56,9 +56,10 @@ migration histories. No service-role key is present in Vercel or source.
 | Anonymous social reads | Pass | Profiles and challenges returned HTTP 200 with empty real tables |
 | Anonymous social mutation denial | Pass | `enroll_in_league` was denied with HTTP 401 and PostgreSQL code `42501` |
 | Supabase Web3 claim shape | Pass | Client and database read the verified identity from `identity_data.custom_claims`; wrong-network and obsolete flat claims are rejected |
-| Automated core/application suite | Pass | 33 Node tests and 20 Vitest tests passed before release |
+| Automated core/application suite | Pass | 33 Node tests and 21 Vitest tests passed before release |
 | TypeScript and production build | Pass | Completed before the deployment was created |
 | Production claim parser | Pass | The stable deployment returned HTTP 200 and its served social bundle contains the nested-claim parser |
+| Existing wallet signer recovery | Pass | A connected account is resolved from its active connector without a redundant `connectAsync` request |
 
 The visual checks found no clipped primary content at either viewport. The
 no-market snapshot could not exercise the prediction form's keyboard path or a
