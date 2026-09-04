@@ -21,6 +21,7 @@ import {
 } from "viem";
 import { DreamDexAdapter, type DiscoveredMarket } from "../dreamdex/adapter.js";
 import { DreamDexProfileReconciler } from "../dreamdex/reconciliation.js";
+import { assertTradingWithHeadroom } from "../core/guards.js";
 import { maximumBuyCost } from "../core/units.js";
 import type { PublicAppConfig } from "./config.js";
 import { selectedOutcomePrice } from "./quote.js";
@@ -36,6 +37,7 @@ export interface LiveRound {
 }
 
 export interface OrderPlan {
+  account: Address;
   market: DiscoveredMarket;
   side: "BUY_YES" | "BUY_NO";
   yesPrice: bigint;
@@ -44,6 +46,19 @@ export interface OrderPlan {
   maximumCost: bigint;
   approval?: UnsignedCall;
   order: UnsignedCall;
+}
+
+export function assertPlanAuthorization(
+  plannedAccount: Address,
+  activeAccount: Address | undefined,
+  activeChainId: number | undefined,
+) {
+  if (!activeAccount || activeAccount.toLowerCase() !== plannedAccount.toLowerCase()) {
+    throw new Error("The connected wallet changed after review. Review the call again.");
+  }
+  if (activeChainId !== somniaShannon.id) {
+    throw new Error("Switch to Somnia Testnet, then review the call again.");
+  }
 }
 
 export class BrowserDreamDexRuntime {
@@ -150,6 +165,7 @@ export class BrowserDreamDexRuntime {
   }): Promise<OrderPlan> {
     const account = input.walletClient.account?.address;
     if (!account) throw new Error("Connect a wallet before reviewing your call.");
+    assertPlanAuthorization(account, account, input.walletClient.chain?.id);
     const selectedLimitPrice = selectedOutcomePrice(
       input.side,
       input.yesPrice,
@@ -186,7 +202,17 @@ export class BrowserDreamDexRuntime {
       value: 0n,
       description: `Approve at most ${maximumCost} collateral units for this call`,
     } satisfies UnsignedCall : undefined;
-    return { ...input, selectedLimitPrice, maximumCost, approval, order: unsigned.order };
+    return {
+      account,
+      market: input.market,
+      side: input.side,
+      yesPrice: input.yesPrice,
+      selectedLimitPrice,
+      quantity: input.quantity,
+      maximumCost,
+      approval,
+      order: unsigned.order,
+    };
   }
 
   async sendPlan(
@@ -195,7 +221,25 @@ export class BrowserDreamDexRuntime {
     onSubmitted: (hash: Hex) => void,
   ) {
     const account = walletClient.account;
+    assertPlanAuthorization(plan.account, account?.address, walletClient.chain?.id);
     if (!account) throw new Error("Wallet disconnected before authorization.");
+    const live = await this.exchange.client.getMarketOnchain(plan.market.marketId);
+    try {
+      assertTradingWithHeadroom({
+        status: live.status,
+        expirySec: live.expiry,
+        nowSec: BigInt(Math.floor(Date.now() / 1_000)),
+        minimumHeadroomSec: 30n,
+      });
+    } catch (cause) {
+      throw new Error(
+        "This round locked after review. No approval or order was submitted; refresh the live round.",
+        { cause },
+      );
+    }
+    if (live.pool.toLowerCase() !== plan.market.pool.toLowerCase()) {
+      throw new Error("The live DreamDEX pool changed after review. Refresh the round and try again.");
+    }
     if (plan.approval) {
       const { description: _approvalDescription, ...approval } = plan.approval;
       const approvalGas = await this.estimateCallGas(account.address, approval);

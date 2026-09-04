@@ -63,6 +63,9 @@ See [the approved core architecture](docs/ARCHITECTURE.md).
 Profile derivation and evidence-failure behavior are specified in
 [the reconciliation design](docs/PROFILE_RECONCILIATION.md).
 
+Before presenting the project, follow the [judge demo runbook](docs/DEMO_RUNBOOK.md)
+and review the [hardening and remaining-risk report](docs/HARDENING_REPORT.md).
+
 The database-free profile can also be checked read-only from the command line.
 The account is a public address; no private key is accepted or needed:
 
