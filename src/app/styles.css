@@ -78,6 +78,20 @@ code { font-family: "DM Mono", monospace; font-size: 11px; color: var(--muted); 
 .tx-error span, .state-card span { color: var(--muted); }
 .tx-error button { margin-top: 8px; width: fit-content; }
 .state-card { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.market-lobby { margin: 0 auto 24px; }
+.market-lobby-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 16px; }
+.market-lobby-heading h2 { margin: 5px 0 0; font-size: clamp(23px, 4vw, 34px); letter-spacing: -.04em; }
+.market-lobby-heading .secondary { flex: 0 0 auto; }
+.market-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 12px; }
+.market-option { min-height: 142px; padding: 17px; border: 1px solid var(--line); border-radius: 17px; color: #fff; background: linear-gradient(145deg, #151b26, #0c1018); text-align: left; display: grid; align-content: space-between; gap: 14px; transition: border-color .15s, transform .15s, background .15s; }
+.market-option:hover { transform: translateY(-2px); border-color: #4a5364; }
+.market-option.selected { border-color: var(--lime); background: linear-gradient(145deg, rgba(201, 255, 69, .12), #0c1018); }
+.market-option:disabled { cursor: not-allowed; opacity: .65; }
+.market-option > span { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.market-option > span b { color: var(--lime); font: 500 13px "DM Mono", monospace; }
+.market-option small { color: var(--muted); font-size: 11px; }
+.market-option > strong { line-height: 1.45; }
+.market-notice { margin: 12px 0 0; color: #b9b18e; font-size: 12px; line-height: 1.5; }
 .profile-section { margin-top: 80px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 24px; }
 .section-heading h2 { margin: 6px 0 8px; font-size: clamp(28px, 5vw, 44px); letter-spacing: -.045em; }
@@ -164,6 +178,10 @@ footer { border-top: 1px solid var(--line); color: var(--muted); min-height: 80p
   main { width: min(100% - 24px, 540px); padding-top: 48px; }
   .hero-copy { margin-bottom: 25px; }
   .round-card { padding: 20px 16px; border-radius: 20px; }
+  .market-lobby-heading { display: grid; align-items: start; }
+  .market-lobby-heading .secondary { width: fit-content; }
+  .market-list { grid-template-columns: 1fr; }
+  .market-option { min-height: 125px; }
   .direction-picker { grid-template-columns: 1fr; }
   .direction { min-height: 84px; }
   .how-it-works > div { grid-template-columns: 1fr; }

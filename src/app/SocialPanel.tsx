@@ -9,6 +9,7 @@ import type { Challenge, LeagueProfile } from "../social/model.js";
 import { SupabaseSocialRepository } from "../social/repository.js";
 import { challengeUrl, readSocialRoute, receiptUrl } from "../social/share.js";
 import type { BrowserDreamDexRuntime, LiveRound } from "./runtime.js";
+import { callLabel } from "./marketLabels.js";
 
 type SocialLoadState = "idle" | "loading" | "ready" | "error";
 
@@ -56,9 +57,10 @@ function findRound(result: ReconciledProfile, marketId: Hex): ProfileRound | nul
 
 function resultLabel(round: ProfileRound | null): string {
   if (!round) return "No verified call";
-  if (round.state === "pending") return `${round.side} · awaiting result`;
-  if (round.state === "void") return `${round.side} · void`;
-  return `${round.side} · ${round.state}`;
+  const side = callLabel(round.question, round.side);
+  if (round.state === "pending") return `${side} · awaiting result`;
+  if (round.state === "void") return `${side} · void`;
+  return `${side} · ${round.state}`;
 }
 
 function explorerTransaction(hash: Hex): string {
@@ -335,7 +337,7 @@ export function SocialPanel({
         <article className="share-card">
           <p className="eyebrow">Shared result receipt</p>
           {!receiptRound ? <span aria-live="polite">{error ?? "Rebuilding this claim from DreamDEX…"}</span> : (
-            <><h3>{shortAddress(route.wallet)} called {receiptRound.side}</h3><strong className={`share-result ${receiptRound.state}`}>{receiptRound.state}</strong><p>{receiptRound.question}</p><div className="proof-links"><a href={explorerTransaction(receiptRound.fillTransactionHash)} target="_blank" rel="noreferrer">Verify fill ↗</a>{receiptRound.settlementTransactionHash && <a href={explorerTransaction(receiptRound.settlementTransactionHash)} target="_blank" rel="noreferrer">Verify result ↗</a>}</div></>
+            <><h3>{shortAddress(route.wallet)} called {callLabel(receiptRound.question, receiptRound.side)}</h3><strong className={`share-result ${receiptRound.state}`}>{receiptRound.state}</strong><p>{receiptRound.question}</p><div className="proof-links"><a href={explorerTransaction(receiptRound.fillTransactionHash)} target="_blank" rel="noreferrer">Verify fill ↗</a>{receiptRound.settlementTransactionHash && <a href={explorerTransaction(receiptRound.settlementTransactionHash)} target="_blank" rel="noreferrer">Verify result ↗</a>}</div></>
           )}
         </article>
       )}
