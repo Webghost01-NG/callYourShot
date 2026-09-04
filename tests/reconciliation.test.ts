@@ -167,3 +167,14 @@ test("uses the configured-series list when the exact market lookup is unavailabl
   assert.equal(result.profile.settledCount, 1);
   assert.equal(result.evidenceGaps.length, 0);
 });
+
+test("excludes fills before a server-authoritative league enrollment time", async () => {
+  const rows = [
+    fill({ id: "100_1", timestamp: "100", makerOrderId: "5" }),
+    fill({ id: "200_1", timestamp: "200", makerOrderId: "7" }),
+  ];
+  const result = await new DreamDexProfileReconciler(client(rows), async () => settlement())
+    .reconcile(account, { ...criteria, minimumTimestampSec: 150n });
+  assert.equal(result.profile.rounds.length, 1);
+  assert.equal(result.profile.rounds[0]!.timestampSec, 200n);
+});

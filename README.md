@@ -7,9 +7,9 @@ than account size.
 
 ## Status
 
-The project has a live-round application and database-free verified skill
-profiles backed by the DreamDEX integration core. Social competition is the
-next delivery phase.
+The project has a live-round application, database-free verified skill
+profiles, and an optional Supabase-backed social league. Trading, scoring, and
+shared results remain backed by the DreamDEX integration core.
 
 No market, transaction, settlement, wallet, or production result may be
 fabricated. A missing integration must be reported as unavailable or blocked.
@@ -85,6 +85,21 @@ on-chain verification, or the live book fails, the interface reports that state
 instead of substituting sample data. An injected wallet authorizes each bounded
 approval and trade; a submitted transaction is shown separately from a verified
 fill.
+
+## Optional social league
+
+Apply the approved migration to a Supabase project, enable Ethereum Web3 Auth,
+and configure the application's exact local and deployed redirect URLs. Then
+set only these public browser values:
+
+```bash
+VITE_SUPABASE_URL=<project-url>
+VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-or-legacy-anon-key>
+```
+
+If these values are absent, the application labels the league unconfigured and
+does not display invented players. Never expose a service-role or secret key.
+See [the persistence, authentication, RLS, privacy, and abuse design](docs/SOCIAL_COMPETITION.md).
 
 ## Repository policy
 
