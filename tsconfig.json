@@ -2,15 +2,17 @@
   "compilerOptions": {
     "declaration": true,
     "esModuleInterop": true,
+    "jsx": "react-jsx",
     "forceConsistentCasingInFileNames": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noUncheckedIndexedAccess": true,
     "outDir": "dist",
     "rootDir": ".",
+    "skipLibCheck": true,
     "strict": true,
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "scripts/check-live-core.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/check-live-core.ts", "tests/**/*.ts", "vite.config.ts"]
 }

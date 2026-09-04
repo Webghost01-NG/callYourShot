@@ -7,8 +7,8 @@ than account size.
 
 ## Status
 
-The project is in its integration-validation phase. Application development
-does not begin until the real DreamDEX market lifecycle has been verified.
+The project has a live-round application backed by the verified DreamDEX
+integration core. Profiles and social competition are the next delivery phases.
 
 No market, transaction, settlement, wallet, or production result may be
 fabricated. A missing integration must be reported as unavailable or blocked.
@@ -59,6 +59,22 @@ DREAMDEX_OPERATOR_ID=<id> DREAMDEX_VENUE_ID=<bytes32> npm run check:live
 ```
 
 See [the approved core architecture](docs/ARCHITECTURE.md).
+
+## Live application
+
+Copy `.env.example` to `.env.local` and provide the public DreamDEX operator and
+venue identity supplied by the event organizer. Never put wallet credentials in
+an environment file.
+
+```bash
+npm run dev
+```
+
+The application discovers the current BTC round at runtime. If discovery,
+on-chain verification, or the live book fails, the interface reports that state
+instead of substituting sample data. An injected wallet authorizes each bounded
+approval and trade; a submitted transaction is shown separately from a verified
+fill.
 
 ## Repository policy
 
