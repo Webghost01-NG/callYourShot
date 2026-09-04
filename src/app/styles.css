@@ -66,16 +66,18 @@ h1 { margin: 10px 0 12px; font-size: clamp(38px, 7vw, 72px); line-height: .98; l
 .review-panel > p:not(.eyebrow) { color: #b8c0b0; line-height: 1.55; }
 .review-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
 .tx-status, .verified-receipt, .tx-error { margin: 16px 0 0; padding: 15px; border-radius: 13px; line-height: 1.5; }
-.tx-status { background: #171d29; color: #cbd1dc; }
+.tx-status { background: #171d29; color: #cbd1dc; overflow-wrap: anywhere; }
+.tx-status a, .tx-proof-links a { color: var(--lime); font-size: 12px; text-underline-offset: 3px; }
 .spinner { display: inline-block; width: 14px; height: 14px; margin-right: 10px; border: 2px solid #525c6d; border-top-color: var(--lime); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .verified-receipt { display: flex; gap: 12px; background: rgba(99, 194, 74, .12); border: 1px solid #3d6733; }
 .verified-receipt > span { color: var(--up); font-size: 24px; }
-.verified-receipt div, .tx-error { display: grid; gap: 5px; }
+.verified-receipt div, .tx-error { display: grid; gap: 5px; min-width: 0; }
 .verified-receipt small { color: #b5c9af; }
 code { font-family: "DM Mono", monospace; font-size: 11px; color: var(--muted); }
 .tx-error, .state-card.error { background: rgba(210, 62, 67, .1); border: 1px solid #63363a; }
-.tx-error span, .state-card span { color: var(--muted); }
+.tx-error span, .state-card span { color: var(--muted); overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
+.tx-proof-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 5px; }
 .tx-error button { margin-top: 8px; width: fit-content; }
 .state-card { display: grid; justify-items: center; gap: 12px; text-align: center; }
 .market-lobby { margin: 0 auto 24px; }

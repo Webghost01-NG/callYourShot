@@ -32,6 +32,12 @@ evidence.
   motion is supported.
 - Submitted, filled, unfilled, rejected, and failed transaction states remain
   distinct.
+- Bounded token approval and DreamDEX order authorization have separate request,
+  submission, and confirmation states. If approval succeeds but the order does
+  not, the UI retains the approval receipt and warns that the bounded allowance
+  may remain.
+- Wallet/provider request dumps are normalized into concise user messages and
+  long error content wraps inside the prediction card.
 
 ## Automated evidence
 
@@ -41,6 +47,8 @@ evidence.
 - Accessible direction-selection state.
 - Existing discovery, unit, fill, settlement, scoring, reconciliation, social,
   configuration, and component behavior.
+- Approval-versus-order progress callbacks, first-approval cancellation, later
+  order cancellation, submitted-order uncertainty, and no-fill messaging.
 - Production dependency audit with zero reported vulnerabilities at the time of
   this pass.
 
