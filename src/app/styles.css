@@ -141,6 +141,7 @@ code { font-family: "DM Mono", monospace; font-size: 11px; color: var(--muted); 
 .league-actions input { width: 100%; padding: 12px; color: #fff; background: #090d14; border: 1px solid var(--line); border-radius: 10px; }
 .league-actions hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
 .action-message { margin: 0 !important; color: var(--up) !important; }
+.challenge-unavailable { margin: 0 !important; color: #ffcc74 !important; }
 .error-text { color: var(--down) !important; }
 .share-card { padding: 22px; margin-bottom: 18px; }
 .share-card .eyebrow { margin-top: 0; }
