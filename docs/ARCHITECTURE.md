@@ -16,6 +16,13 @@ trusted operator/venue origin from caller configuration and keys markets by
 `marketId`. It rechecks on-chain status before preparing a write and accepts a
 wallet-bound SDK writer only through dependency injection.
 
+Issue #6 extends this boundary with database-free profile reconciliation. The
+adapter pages indexed account fills, filters the configured BTC series, and
+requires on-chain market state plus the permanent settlement record before a
+result can score. The pure profile reducer applies `CYS-EDGE-v1`, streak,
+accuracy, fee-aware return, and drawdown rules. See
+[PROFILE_RECONCILIATION.md](PROFILE_RECONCILIATION.md).
+
 The core does not select or depend on:
 
 - a frontend or backend framework;
@@ -30,6 +37,8 @@ The core does not select or depend on:
 - Pool addresses are runtime bindings and never durable market identities.
 - Transaction inclusion is not a fill; decoded fill events are mandatory.
 - The permanent settlement record and outcome balances determine claimability.
+- Indexed fills discover profile candidates; on-chain finalization and the
+  permanent settlement record determine scored outcomes.
 - Wallets sign outside the core. No private key crosses this boundary.
 
 ## Verification

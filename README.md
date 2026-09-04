@@ -7,8 +7,9 @@ than account size.
 
 ## Status
 
-The project has a live-round application backed by the verified DreamDEX
-integration core. Profiles and social competition are the next delivery phases.
+The project has a live-round application and database-free verified skill
+profiles backed by the DreamDEX integration core. Social competition is the
+next delivery phase.
 
 No market, transaction, settlement, wallet, or production result may be
 fabricated. A missing integration must be reported as unavailable or blocked.
@@ -59,6 +60,15 @@ DREAMDEX_OPERATOR_ID=<id> DREAMDEX_VENUE_ID=<bytes32> npm run check:live
 ```
 
 See [the approved core architecture](docs/ARCHITECTURE.md).
+Profile derivation and evidence-failure behavior are specified in
+[the reconciliation design](docs/PROFILE_RECONCILIATION.md).
+
+The database-free profile can also be checked read-only from the command line.
+The account is a public address; no private key is accepted or needed:
+
+```bash
+PROFILE_ACCOUNT=<address> DREAMDEX_OPERATOR_ID=<id> DREAMDEX_VENUE_ID=<bytes32> npm run check:profile
+```
 
 ## Live application
 

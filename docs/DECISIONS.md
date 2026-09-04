@@ -28,6 +28,11 @@ not become accepted architecture merely by appearing here.
   adapter and does not reimplement chain rules.
 - Public deployment configuration uses `VITE_DREAMDEX_OPERATOR_ID` and
   `VITE_DREAMDEX_VENUE_ID`; optional indexer and RPC overrides contain no keys.
+- Issue #6 profiles are database-free: they page the wallet's DreamDEX fills and
+  rebuild against chain-authoritative settlement on demand.
+- Accuracy, streaks, fee-aware actual return, maximum drawdown, and provisional
+  status follow the definitions in `PROFILE_RECONCILIATION.md`; voids are
+  visible and excluded from statistics.
 
 See [DOMAIN_AND_SCORING.md](DOMAIN_AND_SCORING.md) for the approved policy.
 
@@ -35,7 +40,7 @@ See [DOMAIN_AND_SCORING.md](DOMAIN_AND_SCORING.md) for the approved policy.
 
 | Decision | Needed before | Current constraint |
 |---|---|---|
-| Persistence technology and schema | Issue #3 implementation | Must store social organization, not replace chain truth |
+| Persistence technology and schema | Issue #7 | Must store social organization, not replace chain truth |
 | Identity policy | Issue #7 | Short wallet address by default; optional names need abuse controls |
 | Hosting and CI/CD | Deployment phase | Requires explicit authorization |
 

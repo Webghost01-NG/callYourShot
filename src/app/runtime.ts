@@ -15,9 +15,11 @@ import {
   http,
   parseAbi,
   type Hex,
+  type Address,
   type WalletClient,
 } from "viem";
 import { DreamDexAdapter, type DiscoveredMarket } from "../dreamdex/adapter.js";
+import { DreamDexProfileReconciler } from "../dreamdex/reconciliation.js";
 import { maximumBuyCost } from "../core/units.js";
 import type { PublicAppConfig } from "./config.js";
 
@@ -100,6 +102,22 @@ export class BrowserDreamDexRuntime {
       }
     }
     throw lastError;
+  }
+
+  async loadProfile(account: Address, walletClient: WalletClient) {
+    if (walletClient.account?.address.toLowerCase() !== account.toLowerCase()) {
+      throw new Error("Connected wallet changed before profile reconciliation.");
+    }
+    const adapter = this.adapter(walletClient);
+    const reconciler = new DreamDexProfileReconciler(
+      this.exchange.client,
+      (marketId) => adapter.getSettlement(marketId),
+    );
+    return reconciler.reconcile(account, {
+      asset: "BTC",
+      intervalSec: 900,
+      origin: { operatorId: this.config.operatorId, venueId: this.config.venueId },
+    });
   }
 
   async prepareOrder(input: {
