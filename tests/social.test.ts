@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { User } from "@supabase/supabase-js";
 import type { Address, Hex } from "viem";
 import { rational, SCORE_FORMULA_VERSION, type SkillProfile } from "../src/core/profile.js";
 import type { ReconciledProfile } from "../src/dreamdex/reconciliation.js";
 import { buildLeagueBoard, type VerifiedLeagueProfile } from "../src/social/leaderboard.js";
 import type { LeagueProfile } from "../src/social/model.js";
-import { normalizeDisplayName } from "../src/social/repository.js";
+import { normalizeDisplayName, verifiedWeb3Wallet } from "../src/social/repository.js";
 import { challengeUrl, readSocialRoute, receiptUrl } from "../src/social/share.js";
 
 const marketId = `0x${"a".repeat(64)}` as Hex;
@@ -77,6 +78,43 @@ test("display names are optional, constrained, and cannot impersonate the produc
   assert.equal(normalizeDisplayName("   "), null);
   assert.throws(() => normalizeDisplayName("DreamDEX"), /reserved/);
   assert.throws(() => normalizeDisplayName("<script>"), /must be/);
+});
+
+test("reads the verified wallet from Supabase Web3 custom claims", () => {
+  const wallet = "0x2981ad2090C329Cc5D9f0496de672d824959D196";
+  const user = {
+    identities: [{
+      provider: "web3",
+      identity_data: {
+        custom_claims: {
+          address: wallet,
+          chain: "ethereum",
+          network: "50312",
+        },
+      },
+    }],
+  } as unknown as Pick<User, "identities">;
+  assert.equal(verifiedWeb3Wallet(user), wallet);
+});
+
+test("rejects wrong-network and obsolete flat Web3 identity claims", () => {
+  const wallet = "0x2981ad2090C329Cc5D9f0496de672d824959D196";
+  const wrongNetwork = {
+    identities: [{
+      provider: "web3",
+      identity_data: {
+        custom_claims: { address: wallet, chain: "ethereum", network: "1" },
+      },
+    }],
+  } as unknown as Pick<User, "identities">;
+  const flatClaims = {
+    identities: [{
+      provider: "web3",
+      identity_data: { address: wallet, chain: "ethereum", network: "50312" },
+    }],
+  } as unknown as Pick<User, "identities">;
+  assert.equal(verifiedWeb3Wallet(wrongNetwork), null);
+  assert.equal(verifiedWeb3Wallet(flatClaims), null);
 });
 
 test("shared links contain only reconstructable evidence keys", () => {
