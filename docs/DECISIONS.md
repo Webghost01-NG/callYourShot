@@ -23,6 +23,11 @@ not become accepted architecture merely by appearing here.
   and an injected DreamDEX SDK adapter, with no application framework.
 - Core tests use Node's test runner through `tsx`; TypeScript, `tsx`, and Node
   types are development-only dependencies.
+- The application uses React 19 with Vite, Wagmi over viem for explicit wallet
+  authorization, and TanStack Query for wallet state. Its UI consumes the core
+  adapter and does not reimplement chain rules.
+- Public deployment configuration uses `VITE_DREAMDEX_OPERATOR_ID` and
+  `VITE_DREAMDEX_VENUE_ID`; optional indexer and RPC overrides contain no keys.
 
 See [DOMAIN_AND_SCORING.md](DOMAIN_AND_SCORING.md) for the approved policy.
 
@@ -30,8 +35,6 @@ See [DOMAIN_AND_SCORING.md](DOMAIN_AND_SCORING.md) for the approved policy.
 
 | Decision | Needed before | Current constraint |
 |---|---|---|
-| Application framework | Issue #5 | Must consume the core without moving chain rules into UI code |
-| Wallet connection library | Issue #5 | Must support Somnia and explicit user authorization |
 | Persistence technology and schema | Issue #3 implementation | Must store social organization, not replace chain truth |
 | Identity policy | Issue #7 | Short wallet address by default; optional names need abuse controls |
 | Hosting and CI/CD | Deployment phase | Requires explicit authorization |
