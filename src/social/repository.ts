@@ -10,6 +10,10 @@ const MARKET_ID = /^0x[0-9a-fA-F]{64}$/;
 const DISPLAY_NAME = /^[A-Za-z0-9][A-Za-z0-9 _.-]{1,23}$/;
 const PROFILE_PAGE_SIZE = 100;
 const MAX_PROFILE_PAGES = 10;
+const clientsByProject = new Map<string, {
+  publishableKey: string;
+  client: SupabaseClient<Database>;
+}>();
 const RESERVED_NAMES = new Set([
   "admin", "administrator", "moderator", "support", "somnia", "dreamdex",
   "call your shot", "callyourshot",
@@ -88,13 +92,31 @@ export function normalizeDisplayName(value: string): string | null {
   return normalized;
 }
 
+function projectKey(config: SocialConfig): string {
+  return new URL(config.supabaseUrl).toString().replace(/\/$/, "");
+}
+
+function sharedClient(config: SocialConfig): SupabaseClient<Database> {
+  const project = projectKey(config);
+  const cached = clientsByProject.get(project);
+  if (cached) {
+    if (cached.publishableKey !== config.supabasePublishableKey) {
+      throw new Error("Conflicting public keys were supplied for the same Supabase project.");
+    }
+    return cached.client;
+  }
+  const client = createClient<Database>(project, config.supabasePublishableKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+  });
+  clientsByProject.set(project, { publishableKey: config.supabasePublishableKey, client });
+  return client;
+}
+
 export class SupabaseSocialRepository {
   private readonly client: SupabaseClient<Database>;
 
   constructor(config: SocialConfig) {
-    this.client = createClient<Database>(config.supabaseUrl, config.supabasePublishableKey, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
-    });
+    this.client = sharedClient(config);
   }
 
   async authenticatedWallet(): Promise<Address | null> {
@@ -207,6 +229,7 @@ export class SupabaseSocialRepository {
   }
 
   close(): void {
-    this.client.removeAllChannels();
+    // The Auth client is shared for the page lifetime. This repository does not
+    // create Realtime channels, so it has no client-owned resources to release.
   }
 }

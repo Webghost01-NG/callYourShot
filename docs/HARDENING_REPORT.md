@@ -41,6 +41,8 @@ evidence.
 - Shared receipt and challenge routes use explicit loading, ready, not-found,
   and error states. Missing DreamDEX evidence cannot remain labeled as an
   in-progress rebuild, and clipboard denial leaves a selectable result URL.
+- React development remounts reuse one page-lifetime Supabase Auth client per
+  project instead of creating competing listeners on one session storage key.
 
 ## Automated evidence
 
@@ -54,6 +56,8 @@ evidence.
   order cancellation, submitted-order uncertainty, and no-fill messaging.
 - Missing and failed shared-result reconstruction, missing challenges, and
   clipboard-blocked result sharing.
+- Repeated Supabase repository construction, normalized project URLs, and
+  conflicting public-key rejection.
 - Production dependency audit with zero reported vulnerabilities at the time of
   this pass.
 
