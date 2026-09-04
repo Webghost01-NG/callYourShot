@@ -58,6 +58,9 @@ The core does not select or depend on:
   address from the server-side identity rather than browser input.
 - Supabase social rows are public coordination data. DreamDEX evidence remains
   authoritative for every displayed score and result.
+- The browser owns one Supabase Auth client per configured project for the page
+  lifetime. React component remounts reuse that client so one persisted-session
+  storage key never has competing Auth listeners.
 
 ## Verification
 
