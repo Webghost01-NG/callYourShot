@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useWalletClient } from "wagmi";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
-import type { Hex } from "viem";
+import { createWalletClient, custom, type EIP1193Provider, type Hex } from "viem";
 import type { VerifiedExecution } from "../core/execution.js";
 import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
 import { readPublicConfig } from "./config.js";
@@ -10,6 +10,7 @@ import { formatUnits, parseDecimalUnits } from "./amounts.js";
 import { ProfilePanel, type ProfileLoadState } from "./ProfilePanel.js";
 import { buildCallQuote, selectedOutcomePrice } from "./quote.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
+import type { ConnectedWallet } from "./SocialPanel.js";
 
 type LoadState = "loading" | "ready" | "empty" | "stale" | "error";
 type TxState = "idle" | "preparing" | "review" | "authorizing" | "submitted" | "filled" | "unfilled" | "rejected" | "failed";
@@ -279,18 +280,29 @@ export function App() {
     : `${formatUnits(bestAsk * 100n, decimals, 0)}%`;
   const openingReference = round?.market.indexed.question.match(/[\d,.]+/)?.[0];
 
-  async function connectWallet() {
+  async function connectWallet(): Promise<ConnectedWallet | null> {
     const connector = connectors[0];
     if (!connector) {
       setTxError("No injected wallet is available in this browser.");
       setTxState("failed");
-      return;
+      return null;
     }
     try {
-      await connectAsync({ connector });
+      const connection = await connectAsync({ connector });
+      const connectedAddress = connection.accounts[0];
+      const provider = await connector.getProvider({ chainId: connection.chainId });
+      if (!connectedAddress || !provider) throw new Error("Wallet connection did not return a signer.");
+      return {
+        address: connectedAddress,
+        walletClient: createWalletClient({
+          account: connectedAddress,
+          transport: custom(provider as EIP1193Provider),
+        }),
+      };
     } catch (error) {
       setTxError(errorMessage(error));
       setTxState("rejected");
+      return null;
     }
   }
 

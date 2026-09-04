@@ -20,7 +20,12 @@ interface SocialPanelProps {
   connected: boolean;
   address?: Address;
   walletClient?: WalletClient;
-  onConnect: () => Promise<void>;
+  onConnect: () => Promise<ConnectedWallet | null>;
+}
+
+export interface ConnectedWallet {
+  address: Address;
+  walletClient: WalletClient;
 }
 
 interface ChallengeEvidence {
@@ -196,16 +201,21 @@ export function SocialPanel({
     return () => { active = false; };
   }, [enrollmentByWallet, repository, route, runtime, state]);
 
-  async function ensureLeagueIdentity(): Promise<void> {
-    if (!connected || !address || !walletClient) {
-      await onConnect();
-      throw new Error("Wallet connected. Click again to sign in and join.");
+  async function ensureLeagueIdentity(): Promise<Address> {
+    let expectedAddress = address;
+    let signer = walletClient;
+    if (!connected || !expectedAddress || !signer) {
+      const connection = await onConnect();
+      if (!connection) throw new Error("Wallet connection did not complete.");
+      expectedAddress = connection.address;
+      signer = connection.walletClient;
     }
     let verified = authWallet;
-    if (!verified || verified.toLowerCase() !== address.toLowerCase()) {
-      verified = await repository!.signIn(walletClient, address);
+    if (!verified || verified.toLowerCase() !== expectedAddress.toLowerCase()) {
+      verified = await repository!.signIn(signer, expectedAddress);
       setAuthWallet(verified);
     }
+    return verified;
   }
 
   async function joinLeague() {
