@@ -43,6 +43,10 @@ evidence.
   in-progress rebuild, and clipboard denial leaves a selectable result URL.
 - React development remounts reuse one page-lifetime Supabase Auth client per
   project instead of creating competing listeners on one session storage key.
+- Live discovery health-checks a complete DreamDEX indexer and Somnia RPC
+  bundle, rejects wrong-chain or excessively skewed snapshots, and can rotate
+  to the second official Shannon HTTP/WebSocket alias before failing honestly.
+  Writes remain pinned and are never automatically resubmitted.
 
 ## Automated evidence
 
@@ -81,7 +85,8 @@ These cannot be honestly marked complete by automated fixtures:
 |---|---|---|
 | No eligible or liquid Event Contract during judging | Live write cannot be demonstrated | Use the live multi-market lobby, then lead with genuine previously settled evidence if all books are empty; never fabricate liquidity |
 | Book moves before an IOC lands | Transaction is safely refused or unfilled | Refresh before review, use SDK slippage protection, verify fill events |
-| Indexer or RPC interruption | Discovery or profile reconstruction is unavailable | Retry bounded reads, rebuild snapshots, preserve honest error states |
+| RPC interruption | A live read route may fail | Rotate the complete read bundle to the other official Shannon alias, preserve bounded errors, and never replay writes |
+| DreamDEX indexer interruption | Discovery and profile reconstruction are unavailable | Report the outage honestly; no second organizer-verified testnet indexer is currently configured |
 | Demo wallet lacks STT or tUSDC | Wallet cannot authorize the demo | Check public balances before judging; keep credentials outside the application |
 | Supabase is not deployed or RLS is unverified | Social writes cannot be claimed | Keep social optional and visibly unconfigured; DreamDEX-backed trading and scoring still operate |
 | External font request fails | Typography falls back to the local sans-serif default | Product behavior and proof remain available |

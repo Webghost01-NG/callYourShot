@@ -89,7 +89,10 @@ be independently reconstructed from DreamDEX Event Contracts on Somnia.”
   actual call; never invent a price.
 - **Wallet/network changed:** review again with the intended wallet on Somnia.
 - **IOC no-fill:** explain that price protection prevented a worse fill.
-- **Indexer or RPC unavailable:** show the unavailable state and verified
-  explorer receipts already returned by real transactions.
+- **RPC unavailable:** point out the safe route diagnostic if the application
+  recovered through the second official Shannon alias. Never suggest a wallet
+  write was retried.
+- **DreamDEX indexer unavailable:** show the bounded unavailable state and
+  previously verified explorer receipts. There is no invented indexer fallback.
 - **Supabase unavailable:** omit league writes; trading and profile truth remain
   independent of Supabase.

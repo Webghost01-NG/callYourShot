@@ -81,6 +81,8 @@ The deployment intentionally fails closed when no eligible live DreamDEX round
 or book is available. It never substitutes a sample market. Deployment evidence
 and the remaining owner-operated checks are recorded in
 [the release validation report](docs/RELEASE_VALIDATION.md).
+Official Shannon endpoint health checks and whole-route recovery are documented
+in [the endpoint recovery design](docs/ENDPOINT_RECOVERY.md).
 
 Copy `.env.example` to `.env.local` and provide the public DreamDEX operator and
 venue identity supplied by the event organizer. Never put wallet credentials in

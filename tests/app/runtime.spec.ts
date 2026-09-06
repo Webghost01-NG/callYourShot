@@ -42,20 +42,49 @@ describe("reviewed order authorization", () => {
     const waitForTransactionReceipt = vi.fn()
       .mockResolvedValueOnce({ status: "success", logs: [] })
       .mockResolvedValueOnce({ status: "success", logs: [] });
+    const reviewedRouteMarket = vi.fn().mockResolvedValue({
+      status: 1,
+      expiry: BigInt(Math.floor(Date.now() / 1_000) + 3_600),
+      pool,
+    });
+    const activeRouteMarket = vi.fn().mockRejectedValue(new Error("wrong route"));
+    const primaryBundle = {
+      id: "somnia-infrastructure",
+      label: "Somnia infrastructure",
+      indexerUrl: "https://dev.smk.somnia.host/v1/graphql",
+      httpRpcUrl: "https://api.infra.testnet.somnia.network",
+      wsRpcUrl: "wss://api.infra.testnet.somnia.network/ws",
+    };
+    const secondaryBundle = {
+      id: "dream-rpc",
+      label: "Dream RPC",
+      indexerUrl: "https://dev.smk.somnia.host/v1/graphql",
+      httpRpcUrl: "https://dream-rpc.somnia.network/",
+      wsRpcUrl: "wss://dream-rpc.somnia.network/ws",
+    };
     Object.assign(runtime as unknown as Record<string, unknown>, {
-      exchange: {
-        client: {
-          getMarketOnchain: vi.fn().mockResolvedValue({
-            status: 1,
-            expiry: BigInt(Math.floor(Date.now() / 1_000) + 3_600),
-            pool,
-          }),
+      config: {
+        operatorId: 2,
+        venueId: `0x${"9".repeat(64)}`,
+        endpointBundles: [primaryBundle, secondaryBundle],
+      },
+      activeEndpointIndex: 1,
+      connections: new Map([[0, {
+        bundle: primaryBundle,
+        exchange: {
+          client: {
+            getMarketOnchain: reviewedRouteMarket,
+          },
         },
-      },
-      publicClient: {
-        estimateGas: vi.fn().mockResolvedValue(100_000n),
-        waitForTransactionReceipt,
-      },
+        publicClient: {
+          estimateGas: vi.fn().mockResolvedValue(100_000n),
+          waitForTransactionReceipt,
+        },
+      }], [1, {
+        bundle: secondaryBundle,
+        exchange: { client: { getMarketOnchain: activeRouteMarket } },
+        publicClient: {},
+      }]]),
       adapter: () => ({ verifyOrder: vi.fn().mockReturnValue({ transactionHash: orderHash }) }),
     });
     const sendTransaction = vi.fn()
@@ -68,6 +97,7 @@ describe("reviewed order authorization", () => {
     } as unknown as WalletClient;
     const plan = {
       account: reviewedWallet,
+      endpointId: "somnia-infrastructure",
       market: {
         marketId: `0x${"3".repeat(64)}`,
         pool,
@@ -101,5 +131,7 @@ describe("reviewed order authorization", () => {
     ]);
     expect(sendTransaction).toHaveBeenCalledTimes(2);
     expect(waitForTransactionReceipt).toHaveBeenCalledTimes(2);
+    expect(reviewedRouteMarket).toHaveBeenCalledTimes(1);
+    expect(activeRouteMarket).not.toHaveBeenCalled();
   });
 });
