@@ -16,6 +16,7 @@ import {
 } from "./marketDiscovery.js";
 import { isUserRejectedRequest, publicErrorMessage, transactionFailureMessage } from "./errors.js";
 import { buildCallQuote, selectedOutcomePrice } from "./quote.js";
+import { MarketVerificationTrail } from "./MarketVerificationTrail.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
 import type {
   ConnectedWallet,
@@ -614,6 +615,12 @@ export function App() {
                 <div><span>Selected event</span><strong>{round.market.indexed.asset || "Event"} · {cadenceLabel(round.market.indexed.intervalSec)}</strong></div>
                 <div><span>Market closes in</span><strong className="timer">{countdown(round.market.expirySec, now)}</strong></div>
               </div>
+              <MarketVerificationTrail
+                round={round}
+                execution={plan?.market.marketId.toLowerCase() === round.market.marketId.toLowerCase()
+                  ? execution
+                  : undefined}
+              />
               <div className="round-workspace">
                 <div className="outcome-panel">
                   <div className="reference">

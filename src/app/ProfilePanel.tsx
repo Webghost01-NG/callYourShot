@@ -132,6 +132,14 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
                       ? <a href={explorerTransaction(round.oracleTransactionHash)} target="_blank" rel="noreferrer">Oracle answer ↗</a>
                       : round.state !== "pending" && <span>Oracle link unavailable</span>}
                   </div>
+                  <details className="history-verification">
+                    <summary>Open verification trail</summary>
+                    <ol>
+                      <li><strong>DreamDEX fill decoded</strong><code>{round.fillTransactionHash}</code></li>
+                      <li><strong>{round.state === "pending" ? "Waiting for Event Contract settlement" : "Event Contract settlement verified"}</strong><code>{round.marketId}</code></li>
+                      <li><strong>Score inputs derived</strong><span>{percentage(round.confidence)} confidence · {round.state} · {round.roundPoints ? `${formatRational(round.roundPoints)} points` : "not scored"}</span></li>
+                    </ol>
+                  </details>
                 </div>
                 <div className={`history-result ${round.state}`}>
                   <span>{round.state === "won" ? "Won" : round.state === "lost" ? "Lost" : round.state === "void" ? "Void" : "Pending"}</span>

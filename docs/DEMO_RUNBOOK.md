@@ -38,11 +38,15 @@ countdown, and YES/NO choices.
 ### 0:25–1:10 — One real call
 
 1. Choose one live event and then choose YES or NO.
-2. Enter a deliberately small maximum loss.
-3. Show the market-derived price, maximum loss, and possible payout.
-4. Open the review and explain the bounded approval, if one is required.
-5. Confirm in the wallet.
-6. Call out the separate submitted and verified-fill states.
+2. Open “DreamDEX verification trail.” In under a minute, point out the trusted
+   operator/venue, matching indexed and on-chain bindings, live order book, and
+   pending fill stage. Close it to return to the simple call flow.
+3. Enter a deliberately small maximum loss.
+4. Show the market-derived price, maximum loss, and possible payout.
+5. Open the review and explain the bounded approval, if one is required.
+6. Confirm in the wallet.
+7. Reopen the trail and show that the last stage changes only after a real
+   DreamDEX fill event is decoded. Follow its transaction link.
 
 If liquidity moves or the round locks, show the honest refusal and continue to
 the verified-history section. Do not retry repeatedly or describe a submission
@@ -57,6 +61,10 @@ score with the formula on the receipt. The application rebuilds this public
 evidence from DreamDEX at runtime, so the route does not require a connected
 wallet, Supabase, current market liquidity, or waiting for a demo round to
 resolve.
+
+Open one history row's verification trail to show the exact market identity,
+fill transaction, settlement state, confidence, result, and score contribution
+without crowding the default record view.
 
 ### 1:55–2:35 — Human competition
 

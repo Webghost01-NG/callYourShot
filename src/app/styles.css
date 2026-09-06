@@ -282,6 +282,25 @@ h1 em { color: var(--lime); font-style: normal; }
 .round-meta span, .reference span, .stake-field > span, .receipt-preview span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
 .round-meta strong { font-size: 13px; }
 .timer { color: var(--lime); font-family: "DM Mono", monospace; }
+.market-verification { border-bottom: 1px solid var(--line); background: #0b1012; }
+.market-verification > summary { min-height: 55px; padding: 13px 25px; display: flex; align-items: center; justify-content: space-between; gap: 14px; color: var(--muted-bright); cursor: pointer; list-style: none; }
+.market-verification > summary::-webkit-details-marker { display: none; }
+.market-verification > summary > span { display: flex; align-items: center; gap: 9px; }
+.market-verification > summary i { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; color: #071006; background: var(--lime); font-size: 11px; font-style: normal; }
+.market-verification > summary small { color: var(--lime); font: 500 9px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.market-verification[open] > summary { border-bottom: 1px solid var(--line); }
+.market-verification ol { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; }
+.market-verification li { min-width: 0; padding: 17px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; border-right: 1px solid var(--line); }
+.market-verification li:last-child { border-right: 0; }
+.market-verification li > span { color: var(--lime); font: 500 9px "DM Mono", monospace; }
+.market-verification li > div { min-width: 0; display: grid; align-content: start; gap: 7px; }
+.market-verification li strong { font-size: 11px; }
+.market-verification li p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.market-verification li code { overflow-wrap: anywhere; }
+.market-verification .pending-stage > span { color: var(--muted); }
+.market-verification .verified-stage { background: rgba(186, 255, 60, .04); }
+.verification-links { display: flex; flex-wrap: wrap; gap: 7px; }
+.verification-links a, .market-verification li a { color: var(--lime); font-size: 9px; text-underline-offset: 3px; }
 .round-workspace { display: grid; grid-template-columns: minmax(0, 1.13fr) minmax(350px, .87fr); }
 .outcome-panel, .ticket-panel { padding: clamp(24px, 4vw, 42px); }
 .outcome-panel { border-right: 1px solid var(--line); }
@@ -426,6 +445,11 @@ code { color: var(--muted); font: 400 10px "DM Mono", monospace; }
 .history-result.won > span, .history-result.won > strong { color: var(--up); }
 .history-result.lost > span, .history-result.lost > strong { color: var(--down); }
 .history-result small { color: var(--muted); }
+.history-verification { margin-top: 9px; color: var(--muted); font-size: 10px; }
+.history-verification summary { width: fit-content; color: var(--lime); cursor: pointer; }
+.history-verification ol { margin: 9px 0 0; padding: 11px 11px 11px 28px; display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 10px; background: #090d10; }
+.history-verification li { padding-left: 3px; }
+.history-verification li strong, .history-verification li code, .history-verification li span { display: block; margin-top: 3px; overflow-wrap: anywhere; }
 .formula-note { margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.65; }
 .formula-note summary { color: #d8dddb; cursor: pointer; }
 
@@ -497,6 +521,10 @@ footer div { display: flex; align-items: center; gap: 10px; color: var(--ink); }
   .hero { grid-template-columns: 1fr; gap: 50px; min-height: auto; padding: 92px 0; }
   .hero-proof { max-width: 600px; }
   .market-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .market-verification ol { grid-template-columns: 1fr 1fr; }
+  .market-verification li { border-bottom: 1px solid var(--line); }
+  .market-verification li:nth-child(2) { border-right: 0; }
+  .market-verification li:nth-last-child(-n + 2) { border-bottom: 0; }
   .round-workspace { grid-template-columns: 1fr; }
   .outcome-panel { border-right: 0; border-bottom: 1px solid var(--line); }
   .proof-system { grid-template-columns: 1fr; gap: 30px; }
@@ -525,6 +553,12 @@ footer div { display: flex; align-items: center; gap: 10px; color: var(--ink); }
   .market-list { grid-template-columns: 1fr; }
   .market-option { min-height: 150px; }
   .round-meta { align-items: flex-start; }
+  .market-verification > summary { padding: 13px 17px; }
+  .market-verification ol { grid-template-columns: 1fr; }
+  .market-verification li,
+  .market-verification li:nth-child(2),
+  .market-verification li:nth-last-child(-n + 2) { border-right: 0; border-bottom: 1px solid var(--line); }
+  .market-verification li:last-child { border-bottom: 0; }
   .outcome-panel, .ticket-panel { padding: 22px 17px; }
   .reference { min-height: 0; }
   .direction-picker { grid-template-columns: 1fr; }
