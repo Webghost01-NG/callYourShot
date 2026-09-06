@@ -1,6 +1,6 @@
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import type { Hex } from "viem";
-import { formatRational, type Rational } from "../core/profile.js";
+import { formatRational, VERIFIED_CALL_THRESHOLD, type Rational } from "../core/profile.js";
 import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
 import { formatUnits } from "./amounts.js";
 import { callLabel } from "./marketLabels.js";
@@ -41,8 +41,11 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
   const status = profile?.state === "verified"
     ? "Verified"
     : profile?.state === "provisional"
-      ? `Provisional · ${10 - profile.settledCount} more to rank`
+      ? `Provisional · ${VERIFIED_CALL_THRESHOLD - profile.settledCount} more to rank`
       : "No settled calls yet";
+  const verifiedProgress = profile
+    ? Math.min(profile.settledCount, VERIFIED_CALL_THRESHOLD)
+    : 0;
 
   return (
     <section className="profile-section" id="record" aria-labelledby="profile-title">
@@ -88,6 +91,19 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
               <div><span>Formula</span><strong>{profile.formulaVersion}</strong></div>
             </div>
           </div>
+
+          {profile.state !== "verified" && (
+            <div className="qualification-progress" role="status">
+              <div>
+                <strong>{verifiedProgress} of {VERIFIED_CALL_THRESHOLD} settled calls verified</strong>
+                <span>{verifiedProgress === 0
+                  ? "Your first genuine settled call unlocks a provisional skill score."
+                  : `${VERIFIED_CALL_THRESHOLD - verifiedProgress} more ${VERIFIED_CALL_THRESHOLD - verifiedProgress === 1 ? "call" : "calls"} to enter the verified leaderboard.`}</span>
+              </div>
+              <progress value={verifiedProgress} max={VERIFIED_CALL_THRESHOLD} aria-label="Verified leaderboard qualification progress" />
+              <small>Provisional scores show progress, but they never receive a leaderboard rank.</small>
+            </div>
+          )}
 
           {result.evidenceGaps.length > 0 && (
             <div className="evidence-warning" role="status">

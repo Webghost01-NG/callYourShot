@@ -96,6 +96,12 @@ Ordering uses the exact `CYS-EDGE-v1` rational skill score, then settled sample
 size, enrollment time, and wallet address as deterministic tie-breakers. Dollar
 profit is displayed in personal records but never used for rank.
 
+Before ten settlements, a caller appears only in the explicitly unranked
+qualification section. It shows the provisional score, exact settled sample
+count, and progress toward ten. Qualification ordering uses sample count rather
+than presenting an unstable early score as a rank. Empty profiles may show
+enrollment activity but have no score; no simulated player or outcome is added.
+
 The public client pages enrollments and reconciles at most three wallets
 concurrently to avoid an uncontrolled indexer burst. It fails the board instead
 of silently truncating if the league exceeds its 1,000-profile browser safety

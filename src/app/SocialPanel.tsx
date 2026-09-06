@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import type { Address, Hex, WalletClient } from "viem";
-import { formatRational, type ProfileRound } from "../core/profile.js";
+import { formatRational, VERIFIED_CALL_THRESHOLD, type ProfileRound } from "../core/profile.js";
 import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
 import { buildLeagueBoard, type LeagueBoard, type VerifiedLeagueProfile } from "../social/leaderboard.js";
 import type { SocialConfig } from "../social/config.js";
@@ -497,12 +497,12 @@ export function SocialPanel({
 
       <div className="league-grid">
         <div className="league-table">
-          <div className="league-table-heading"><h3>Verified leaderboard</h3><span>10+ settled calls</span></div>
+          <div className="league-table-heading"><h3>Verified leaderboard</h3><span>{VERIFIED_CALL_THRESHOLD}+ settled calls</span></div>
           {state === "loading" && <div className="league-row muted"><span><i className="spinner" />Verifying every player…</span></div>}
           {state === "error" && <div className="league-row error-text"><span>{error}</span></div>}
-          {state === "ready" && board.ranked.length === 0 && <div className="league-row muted"><span>No player has ten verified calls yet.</span></div>}
+          {state === "ready" && board.ranked.length === 0 && <div className="league-row muted qualification-empty"><strong>Qualification is underway</strong><span>{board.provisional.length > 0 ? `${board.provisional.length} ${board.provisional.length === 1 ? "caller is" : "callers are"} building a verified record.` : "No player has reached ten verified calls yet."}</span></div>}
           {board.ranked.map((entry, index) => <LeagueRow key={entry.enrollment.id} entry={entry} rank={index + 1} />)}
-          {board.provisional.length > 0 && <><div className="league-divider">Provisional</div>{board.provisional.map((entry) => <LeagueRow key={entry.enrollment.id} entry={entry} />)}</>}
+          {board.provisional.length > 0 && <><div className="league-divider">Qualification progress · not ranked</div>{board.provisional.map((entry) => <LeagueRow key={entry.enrollment.id} entry={entry} provisional />)}</>}
           {failedProfiles > 0 && <p className="league-warning">{failedProfiles} {failedProfiles === 1 ? "profile was" : "profiles were"} excluded because live evidence could not be verified.</p>}
         </div>
 
@@ -582,13 +582,16 @@ function SharedReceiptCard({
   );
 }
 
-function LeagueRow({ entry, rank }: { entry: VerifiedLeagueProfile; rank?: number }) {
+function LeagueRow({ entry, rank, provisional = false }: { entry: VerifiedLeagueProfile; rank?: number; provisional?: boolean }) {
   const profile = entry.evidence.profile;
+  const progress = Math.min(profile.settledCount, VERIFIED_CALL_THRESHOLD);
   return (
-    <div className="league-row">
-      <b>{rank ? `#${rank}` : "—"}</b>
-      <span><strong>{nameOf(entry.enrollment)}</strong><small>{shortAddress(entry.enrollment.walletAddress)}</small></span>
-      <span><strong>{profile.skillScore ? formatRational(profile.skillScore) : "—"}</strong><small>{profile.settledCount} settled</small></span>
+    <div className={`league-row${provisional ? " provisional-row" : ""}`}>
+      <b>{rank ? `#${rank}` : "P"}</b>
+      <span><strong>{nameOf(entry.enrollment)}</strong><small>{shortAddress(entry.enrollment.walletAddress)}{provisional && ` · ${profile.skillScore ? `provisional score ${formatRational(profile.skillScore)}` : "awaiting first settled call"}`}</small></span>
+      {provisional
+        ? <span className="league-progress"><strong>{progress}/{VERIFIED_CALL_THRESHOLD}</strong><progress value={progress} max={VERIFIED_CALL_THRESHOLD} aria-label={`${nameOf(entry.enrollment)} qualification progress`} /><small>not ranked</small></span>
+        : <span><strong>{profile.skillScore ? formatRational(profile.skillScore) : "—"}</strong><small>{profile.settledCount} settled</small></span>}
     </div>
   );
 }

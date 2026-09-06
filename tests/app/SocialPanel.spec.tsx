@@ -521,6 +521,11 @@ describe("social competition panel", () => {
       />,
     );
 
+    expect(await screen.findByText(/Qualification is underway/i)).toBeTruthy();
+    expect(screen.getByText(/1 caller is building a verified record/i)).toBeTruthy();
+    expect(screen.getByText(/provisional score 50.00/i)).toBeTruthy();
+    expect(screen.getByText("1/10")).toBeTruthy();
+    expect(screen.getByText("not ranked")).toBeTruthy();
     await userEvent.click(await screen.findByRole("button", { name: "Copy latest result" }));
     expect((await screen.findByLabelText("Shareable result link")).getAttribute("value"))
       .toContain(`receiptMarket=${marketId}`);

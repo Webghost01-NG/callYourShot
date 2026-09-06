@@ -61,6 +61,14 @@ test("provisional players never receive a leaderboard rank", () => {
   assert.equal(board.provisional[0], provisional);
 });
 
+test("qualification progress orders provisional players by verified sample size", () => {
+  const oneCall = entry({ suffix: "5", score: 90, settled: 1, state: "provisional" });
+  const nineCalls = entry({ suffix: "6", score: 20, settled: 9, state: "provisional" });
+  const board = buildLeagueBoard([oneCall, nineCalls]);
+  assert.deepEqual(board.ranked, []);
+  assert.deepEqual(board.provisional, [nineCalls, oneCall]);
+});
+
 test("profiles with score-affecting evidence gaps are not published", () => {
   const incomplete = entry({ suffix: "4", score: 99 });
   incomplete.evidence.evidenceGaps.push({
