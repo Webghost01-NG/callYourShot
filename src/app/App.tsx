@@ -4,6 +4,7 @@ import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import { createWalletClient, custom, type Address, type EIP1193Provider, type Hex } from "viem";
 import type { VerifiedExecution } from "../core/execution.js";
 import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
+import { readSocialRoute } from "../social/share.js";
 import { readPublicConfig } from "./config.js";
 import { readSocialConfig } from "../social/config.js";
 import { formatUnits, parseDecimalUnits } from "./amounts.js";
@@ -102,6 +103,7 @@ export function App() {
       return { config: null, error: errorMessage(error) };
     }
   }, []);
+  const socialRoute = useMemo(() => readSocialRoute(window.location.search), []);
   const { address, chainId, connector: activeConnector, isConnected } = useAccount();
   const { connectors, connectAsync, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
@@ -327,10 +329,11 @@ export function App() {
   }, [bestAsk, round, selected, side, stake]);
   const quote = quoteResult.quote;
 
-  function selectMarket(marketId: Hex) {
+  const selectMarket = useCallback((marketId: Hex) => {
     if (transactionInFlight) return;
     const next = rounds.find((item) => item.market.marketId.toLowerCase() === marketId.toLowerCase());
     if (!next) return;
+    if (selectedMarketId?.toLowerCase() === marketId.toLowerCase()) return;
     setSelectedMarketId(marketId);
     setPlan(undefined);
     setExecution(undefined);
@@ -340,7 +343,7 @@ export function App() {
     setTxError(undefined);
     setTxState("idle");
     setLoadState(hasBuyLiquidity(next) ? "ready" : "empty");
-  }
+  }, [rounds, selectedMarketId, transactionInFlight]);
 
   async function reviewCall() {
     if (!round || !quote) return;
@@ -484,6 +487,26 @@ export function App() {
     enrollment?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
   }
 
+  const socialPanel = (
+    <Suspense fallback={<section className="social-section" id="league"><div className="profile-empty"><span><i className="spinner" />Loading the skill league…</span></div></section>}>
+      <SocialPanel
+        config={socialConfigResult.config}
+        configError={socialConfigResult.error}
+        runtime={runtime}
+        round={round}
+        rounds={rounds}
+        marketDiscoveryState={loadState}
+        route={socialRoute}
+        connected={isConnected}
+        address={address}
+        walletClient={walletClient}
+        onConnect={connectWallet}
+        onEnrollmentChange={setLeagueEnrollment}
+        onSelectMarket={selectMarket}
+      />
+    </Suspense>
+  );
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#arena">Skip to live arena</a>
@@ -509,6 +532,7 @@ export function App() {
       </header>
 
       <main>
+        {socialRoute.kind !== "league" && socialPanel}
         <section className="hero">
           <div className="hero-copy">
             <p className="eyebrow"><span className="live-dot" />The on-chain prediction league</p>
@@ -708,19 +732,7 @@ export function App() {
           onRefresh={() => void loadProfile()}
         />
 
-        <Suspense fallback={<section className="social-section" id="league"><div className="profile-empty"><span><i className="spinner" />Loading the skill league…</span></div></section>}>
-          <SocialPanel
-            config={socialConfigResult.config}
-            configError={socialConfigResult.error}
-            runtime={runtime}
-            round={round}
-            connected={isConnected}
-            address={address}
-            walletClient={walletClient}
-            onConnect={connectWallet}
-            onEnrollmentChange={setLeagueEnrollment}
-          />
-        </Suspense>
+        {socialRoute.kind === "league" && socialPanel}
 
       </main>
       <footer><div><img src="/favicon.svg" alt="" width="28" height="28" /><strong>Call Your Shot</strong></div><span>Powered by DreamDEX Event Contracts on Somnia</span><span>Testnet product · Not financial advice</span></footer>

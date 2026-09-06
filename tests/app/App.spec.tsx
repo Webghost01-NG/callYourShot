@@ -71,6 +71,8 @@ describe("live round resilience", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_DREAMDEX_OPERATOR_ID", "2");
     vi.stubEnv("VITE_DREAMDEX_VENUE_ID", `0x${"2".repeat(64)}`);
+    vi.stubEnv("VITE_SUPABASE_URL", "");
+    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "");
     runtimeMocks.constructed.mockReset();
     runtimeMocks.loadMarkets.mockReset();
     runtimeMocks.refreshRound.mockReset();
@@ -79,6 +81,7 @@ describe("live round resilience", () => {
 
   afterEach(() => {
     cleanup();
+    window.history.replaceState({}, "", "/");
     vi.useRealTimers();
     vi.unstubAllEnvs();
   });
@@ -151,6 +154,22 @@ describe("live round resilience", () => {
     expect(screen.getByRole("button", { name: /No.*NO contract/i })).toBeTruthy();
     expect(screen.getByText(/2 candidates were excluded/i)).toBeTruthy();
     expect(screen.getByText(/bounded market list has more results/i)).toBeTruthy();
+  });
+
+  it("renders a direct shared route before the generic landing content", async () => {
+    const wallet = `0x${"4".repeat(40)}`;
+    const receiptMarket = `0x${"5".repeat(64)}`;
+    window.history.replaceState({}, "", `/?receiptWallet=${wallet}&receiptMarket=${receiptMarket}`);
+    runtimeMocks.loadMarkets.mockResolvedValue({
+      rounds: [liveRound(BigInt(Math.floor(Date.now() / 1_000) + 900))],
+      rejectedCount: 0,
+      truncated: false,
+    });
+    render(<App />);
+
+    const sharedHeading = await screen.findByText("Direct verified receipt");
+    const heroHeading = screen.getByRole("heading", { name: /Call the outcome/i });
+    expect(sharedHeading.compareDocumentPosition(heroHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("retires a timed-out runtime and recovers with a fresh instance", async () => {

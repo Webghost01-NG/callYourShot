@@ -243,6 +243,120 @@ describe("social competition panel", () => {
     expect(screen.queryByText(/Rebuilding both records/i)).toBeNull();
   });
 
+  it("focuses a direct challenge and selects its exact live Event Contract", async () => {
+    const creator = `0x${"1".repeat(40)}` as Address;
+    const invitee = `0x${"2".repeat(40)}` as Address;
+    const marketId = `0x${"3".repeat(64)}`;
+    const challengeId = "11111111-1111-4111-8111-111111111111";
+    const enrolledAt = new Date().toISOString();
+    repositoryMocks.listProfiles.mockResolvedValue([{
+      id: "22222222-2222-4222-8222-222222222222",
+      walletAddress: creator,
+      displayName: null,
+      enrolledAt,
+      formulaVersion: "CYS-EDGE-v1",
+      updatedAt: enrolledAt,
+    }]);
+    repositoryMocks.getChallenge.mockResolvedValue({
+      id: challengeId,
+      creatorWallet: creator,
+      invitedWallet: invitee,
+      opponentWallet: null,
+      marketId,
+      status: "open",
+      createdAt: enrolledAt,
+      acceptedAt: null,
+      cancelledAt: null,
+    });
+    const onSelectMarket = vi.fn();
+
+    render(
+      <SocialPanel
+        config={{
+          supabaseUrl: "https://project.supabase.co",
+          supabasePublishableKey: "sb_publishable_example",
+        }}
+        configError={null}
+        runtime={{
+          loadPublicProfile: vi.fn().mockResolvedValue({
+            evidenceGaps: [],
+            profile: { state: "empty", skillScore: null, settledCount: 0, rounds: [] },
+          }),
+        } as never}
+        route={{ kind: "challenge", challengeId }}
+        rounds={[{
+          market: {
+            marketId,
+            expirySec: BigInt(Math.floor(Date.now() / 1_000) + 900),
+          },
+          book: { yesAsks: [{ price: 500_000n }], noAsks: [] },
+        } as never]}
+        marketDiscoveryState="ready"
+        connected={false}
+        onConnect={async () => null}
+        onSelectMarket={onSelectMarket}
+      />,
+    );
+
+    expect(await screen.findByText("Direct friend challenge")).toBeTruthy();
+    expect(await screen.findByText(/Exact Event Contract found and selected/i)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Go to the matching market/i }).getAttribute("href")).toBe("#arena");
+    await waitFor(() => expect(onSelectMarket).toHaveBeenCalledWith(marketId));
+  });
+
+  it("does not substitute another market when a shared challenge is unavailable", async () => {
+    const creator = `0x${"1".repeat(40)}` as Address;
+    const invitee = `0x${"2".repeat(40)}` as Address;
+    const marketId = `0x${"3".repeat(64)}`;
+    const challengeId = "11111111-1111-4111-8111-111111111111";
+    const enrolledAt = new Date().toISOString();
+    repositoryMocks.listProfiles.mockResolvedValue([{
+      id: "22222222-2222-4222-8222-222222222222",
+      walletAddress: creator,
+      displayName: null,
+      enrolledAt,
+      formulaVersion: "CYS-EDGE-v1",
+      updatedAt: enrolledAt,
+    }]);
+    repositoryMocks.getChallenge.mockResolvedValue({
+      id: challengeId,
+      creatorWallet: creator,
+      invitedWallet: invitee,
+      opponentWallet: null,
+      marketId,
+      status: "open",
+      createdAt: enrolledAt,
+      acceptedAt: null,
+      cancelledAt: null,
+    });
+    const onSelectMarket = vi.fn();
+
+    render(
+      <SocialPanel
+        config={{
+          supabaseUrl: "https://project.supabase.co",
+          supabasePublishableKey: "sb_publishable_example",
+        }}
+        configError={null}
+        runtime={{
+          loadPublicProfile: vi.fn().mockResolvedValue({
+            evidenceGaps: [],
+            profile: { state: "empty", skillScore: null, settledCount: 0, rounds: [] },
+          }),
+        } as never}
+        route={{ kind: "challenge", challengeId }}
+        rounds={[]}
+        marketDiscoveryState="ready"
+        connected={false}
+        onConnect={async () => null}
+        onSelectMarket={onSelectMarket}
+      />,
+    );
+
+    expect(await screen.findByText(/no replacement market has been selected/i)).toBeTruthy();
+    expect(onSelectMarket).not.toHaveBeenCalled();
+  });
+
   it("keeps a result link visible when clipboard access is blocked", async () => {
     const address = `0x${"1".repeat(40)}` as Address;
     const marketId = `0x${"3".repeat(64)}`;

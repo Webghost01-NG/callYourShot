@@ -382,6 +382,7 @@ code { color: var(--muted); font: 400 10px "DM Mono", monospace; }
 .proof-system article p { min-height: 72px; margin: 9px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 
 .profile-section, .social-section { margin-top: 108px; }
+.social-section.shared-route-section { margin-top: 48px; }
 .section-heading .refresh-profile { grid-column: 3; }
 .refresh-profile { flex: 0 0 auto; }
 .refresh-profile:disabled { opacity: .5; cursor: wait; }
@@ -452,6 +453,10 @@ code { color: var(--muted); font: 400 10px "DM Mono", monospace; }
 .challenge-sides { margin: 14px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .challenge-sides > div { padding: 14px; display: grid; gap: 7px; border-radius: 11px; background: #090d10; }
 .challenge-sides a { color: var(--lime); font-size: 10px; }
+.shared-market-state { padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px; background: #090d10; }
+.shared-market-state.live { border-color: rgba(124, 230, 92, .3); color: var(--up); }
+.shared-market-state.live a { color: var(--lime); font-weight: 700; }
+.shared-market-state.unavailable { border-color: rgba(255, 207, 112, .35); color: var(--warning); }
 
 footer {
   min-height: 96px;
