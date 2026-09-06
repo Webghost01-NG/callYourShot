@@ -1,6 +1,6 @@
 # Judge release validation
 
-Status date: 2026-09-04
+Status date: 2026-09-06
 
 This report records only checks actually completed against the public release.
 Unavailable integrations and owner-signature checks remain explicit blockers;
@@ -37,8 +37,10 @@ server secret is stored in source. The local `.vercel` link and pulled
 
 The configured Supabase key is the browser-safe publishable key. Ethereum Web3
 authentication is enabled for Somnia network `50312`, and migrations
-`202609040001` and `202609040002` are present in both the local and remote
-migration histories. No service-role key is present in Vercel or source.
+`202609040001`, `202609040002`, and `202609060001` are present in both the local
+and remote migration histories. No service-role key is present in Vercel or
+source. `VITE_REOWN_PROJECT_ID` remains intentionally absent until a real Reown
+project and origin allowlist are owner-validated.
 
 ## Completed checks
 
@@ -64,6 +66,9 @@ migration histories. No service-role key is present in Vercel or source.
 | Challenge availability and link fallback | Pass | The UI explains when no real round is available and renders every created link for manual copying |
 | Bounded DreamDEX discovery | Pass | A stalled SDK request reached a retryable error within 20 seconds; a regression test proves retry creates a fresh runtime and ignores late results |
 | Profile-check process lifecycle | Pass | The live command flushed its JSON report and exited with status 0 in approximately 16 seconds instead of retaining the SDK transport indefinitely |
+| Snapshot schema deployment | Pass | Migration `202609060001` was the only pending migration, applied successfully, and the linked `private`/`public` schema lint returned no errors |
+| Anonymous snapshot reads | Pass | The deployed `league_score_snapshots` REST relation returned HTTP 200 through the browser-safe publishable key |
+| Bounded board regression | Pass | Automated tests enforce at most 24 DreamDEX wallet rebuilds per refresh and visible enrollment coverage |
 
 The visual checks found no clipped primary content at either viewport. The
 no-market snapshot could not exercise the prediction form's keyboard path or a
@@ -81,6 +86,10 @@ the public RPC configuration was not changed without verified recovery.
 
 ## Outstanding owner-operated acceptance
 
+- Create and allowlist a real Reown project, add its public ID to Vercel, and
+  verify desktop extension, mobile handoff, and desktop QR connection paths.
+- Publish one authenticated snapshot from the production UI and confirm the
+  next refresh rebuilds its score from DreamDEX rather than trusting storage.
 - Validate invited-wallet challenge acceptance and cross-wallet RLS denial
   using two real wallets when an eligible live DreamDEX round is available.
 - Authorize a small real UP or DOWN order from the deployed React application,

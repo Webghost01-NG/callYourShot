@@ -528,6 +528,8 @@ code { color: var(--muted); font: 400 10px "DM Mono", monospace; }
 .league-progress > strong { color: var(--lime); font-family: "DM Mono", monospace; }
 .league-divider { padding: 10px 20px; color: var(--muted); background: #090d10; font: 500 9px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
 .league-warning { margin: 0; padding: 14px 20px; color: #c1b995; background: rgba(173, 142, 43, .08); font-size: 11px; }
+.league-snapshot-status { margin: 0; padding: 14px 20px; display: grid; gap: 4px; border-bottom: 1px solid var(--line); color: var(--muted); background: rgba(186, 255, 60, .035); font-size: 10px; line-height: 1.5; }
+.league-snapshot-status strong { color: var(--lime); font: 500 9px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
 .league-actions { padding: 21px; display: grid; gap: 12px; }
 .league-actions p { margin: -4px 0 4px; }
 .league-actions label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; }

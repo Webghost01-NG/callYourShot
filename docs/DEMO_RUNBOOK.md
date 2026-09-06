@@ -75,6 +75,11 @@ the verified leaderboard, create a noncustodial friend challenge, and copy a
 result receipt. Explain that Supabase coordinates identities and links while
 DreamDEX remains the source of trading and score truth.
 
+Point to the board coverage line: snapshots choose a bounded candidate set, but
+every displayed score was rebuilt from DreamDEX during this refresh. If a
+snapshot is stale or changed, show the visible correction count rather than
+calling the cache authoritative.
+
 If Supabase is not validated, show the explicit “not configured” state and omit
 social-write claims.
 

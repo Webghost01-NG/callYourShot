@@ -103,9 +103,13 @@ than presenting an unstable early score as a rank. Empty profiles may show
 enrollment activity but have no score; no simulated player or outcome is added.
 
 The public client pages enrollments and reconciles at most three wallets
-concurrently to avoid an uncontrolled indexer burst. It fails the board instead
-of silently truncating if the league exceeds its 1,000-profile browser safety
-limit. Provisional players are shown separately. Profiles with score-affecting
+concurrently to avoid an uncontrolled indexer burst. Each refresh verifies at
+most 24 snapshot-selected and discovery wallets, and states that coverage in
+the UI. It still fails closed if enrollment storage exceeds its 1,000-profile
+safety limit. Candidate snapshots are never ranked directly; exact DreamDEX
+reconciliation replaces or rejects their values. See
+[LEADERBOARD_SNAPSHOTS.md](LEADERBOARD_SNAPSHOTS.md). Provisional players are
+shown separately. Profiles with score-affecting
 fill, market, or settlement evidence gaps are counted as excluded, not silently
 published as valid low performers. Missing explorer-link metadata is labeled
 but does not overrule an otherwise complete on-chain settlement.
@@ -153,6 +157,7 @@ migration and live Web3/RLS flows cannot be executed here. Before release:
 1. create or select the intended Supabase project;
 2. enable Ethereum Web3 Auth and configure exact redirect URLs;
 3. apply the migration through the project's migration workflow;
+   this includes the later leaderboard-snapshot migration;
 4. test anonymous reads, owner enrollment/name changes, invited-only challenge
    acceptance, cross-wallet denial, and open-challenge limits with real test
    wallets;

@@ -9,6 +9,19 @@ export interface LeagueProfile {
   updatedAt: string;
 }
 
+export interface LeagueScoreSnapshot {
+  profileId: string;
+  walletAddress: Address;
+  formulaVersion: "CYS-EDGE-v1";
+  state: "empty" | "provisional" | "verified";
+  scoreNumerator: bigint | null;
+  scoreDenominator: bigint | null;
+  scoreMicros: number | null;
+  settledCount: number;
+  sourceBlock: bigint;
+  capturedAt: string;
+}
+
 export type ChallengeStatus = "open" | "accepted" | "cancelled";
 
 export interface Challenge {

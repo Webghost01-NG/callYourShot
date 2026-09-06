@@ -105,6 +105,7 @@ export interface EvidenceGap {
 export interface ReconciledProfile {
   profile: SkillProfile;
   snapshotTimestampSec: bigint;
+  sourceBlock: bigint;
   evidenceGaps: EvidenceGap[];
 }
 
@@ -255,6 +256,7 @@ export class DreamDexProfileReconciler {
     const fills: ProfileFill[] = [];
     const markets = new Map<string, MarketEvidence>();
     const evidenceGaps: EvidenceGap[] = [];
+    let sourceBlock = 0n;
     for (const [key, marketRows] of grouped) {
       const marketId = key as Hex;
       let indexed: IndexedProfileMarket | null;
@@ -295,6 +297,9 @@ export class DreamDexProfileReconciler {
         continue;
       }
       if (marketFills.length === 0) continue;
+      for (const fill of marketFills) {
+        if (fill.blockNumber > sourceBlock) sourceBlock = fill.blockNumber;
+      }
 
       let onchain: OnchainProfileMarket;
       try {
@@ -332,6 +337,12 @@ export class DreamDexProfileReconciler {
         try {
           const history = await readWithRetry(() => this.client.getMarketStatusHistory(marketId));
           const reversedHistory = [...history].reverse();
+          for (const entry of history) {
+            if (/^\d+$/.test(entry.blockNumber)) {
+              const blockNumber = BigInt(entry.blockNumber);
+              if (blockNumber > sourceBlock) sourceBlock = blockNumber;
+            }
+          }
           settlementTransactionHash = asTransactionHash(
             reversedHistory.find((entry) => entry.newStatus === "Finalized")?.txHash,
           );
@@ -381,6 +392,7 @@ export class DreamDexProfileReconciler {
     return {
       profile: reconcileProfile({ account, fills, markets }),
       snapshotTimestampSec,
+      sourceBlock,
       evidenceGaps,
     };
   }

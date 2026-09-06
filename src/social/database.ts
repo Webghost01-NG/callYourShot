@@ -33,6 +33,23 @@ export interface Database {
         Update: Record<string, never>;
         Relationships: [];
       };
+      league_score_snapshots: {
+        Row: {
+          profile_id: string;
+          wallet_address: string;
+          formula_version: string;
+          profile_state: string;
+          score_numerator: string | null;
+          score_denominator: string | null;
+          score_micros: number | null;
+          settled_count: number;
+          source_block: string;
+          captured_at: string;
+        };
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -41,6 +58,18 @@ export interface Database {
       create_challenge: { Args: { p_market_id: string; p_invited_wallet: string }; Returns: string };
       accept_challenge: { Args: { p_challenge_id: string }; Returns: string };
       cancel_challenge: { Args: { p_challenge_id: string }; Returns: string };
+      publish_score_snapshot: {
+        Args: {
+          p_formula_version: string;
+          p_profile_state: string;
+          p_score_numerator: string | null;
+          p_score_denominator: string | null;
+          p_score_micros: number | null;
+          p_settled_count: number;
+          p_source_block: string;
+        };
+        Returns: string;
+      };
     };
   };
 }

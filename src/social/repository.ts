@@ -4,12 +4,13 @@ import { getAddress, isAddress, type Address, type Hex, type WalletClient } from
 import { createSiweMessage, generateSiweNonce } from "viem/siwe";
 import type { SocialConfig } from "./config.js";
 import type { Database } from "./database.js";
-import type { Challenge, ChallengeStatus, LeagueProfile } from "./model.js";
+import type { Challenge, ChallengeStatus, LeagueProfile, LeagueScoreSnapshot } from "./model.js";
 
 const MARKET_ID = /^0x[0-9a-fA-F]{64}$/;
 const DISPLAY_NAME = /^[A-Za-z0-9][A-Za-z0-9 _.-]{1,23}$/;
 const PROFILE_PAGE_SIZE = 100;
 const MAX_PROFILE_PAGES = 10;
+const SNAPSHOT_QUERY_LIMIT = 72;
 const clientsByProject = new Map<string, {
   publishableKey: string;
   client: SupabaseClient<Database>;
@@ -45,6 +46,8 @@ type PublicChallengeRow = Omit<
   "creator_user_id" | "opponent_user_id"
 >;
 
+type PublicSnapshotRow = Database["public"]["Tables"]["league_score_snapshots"]["Row"];
+
 function mapProfile(row: PublicProfileRow): LeagueProfile {
   if (!isAddress(row.wallet_address)) throw new Error("A league profile has an invalid wallet address.");
   if (row.formula_version !== "CYS-EDGE-v1") throw new Error("A league profile uses an unsupported formula.");
@@ -79,6 +82,37 @@ function mapChallenge(row: PublicChallengeRow): Challenge {
     createdAt: assertDate(row.created_at, "Challenge creation time"),
     acceptedAt: row.accepted_at ? assertDate(row.accepted_at, "Challenge acceptance time") : null,
     cancelledAt: row.cancelled_at ? assertDate(row.cancelled_at, "Challenge cancellation time") : null,
+  };
+}
+
+function integerText(value: string, label: string, signed = false): bigint {
+  const pattern = signed ? /^-?\d+$/ : /^\d+$/;
+  if (!pattern.test(value)) throw new Error(`${label} is not a valid integer.`);
+  return BigInt(value);
+}
+
+function mapScoreSnapshot(row: PublicSnapshotRow): LeagueScoreSnapshot {
+  if (!isAddress(row.wallet_address)) throw new Error("A score snapshot has an invalid wallet address.");
+  if (row.formula_version !== "CYS-EDGE-v1") throw new Error("A score snapshot uses an unsupported formula.");
+  if (!(row.profile_state === "empty" || row.profile_state === "provisional" || row.profile_state === "verified")) {
+    throw new Error("A score snapshot has an unsupported profile state.");
+  }
+  if (!Number.isSafeInteger(row.settled_count) || row.settled_count < 0) {
+    throw new Error("A score snapshot has an invalid settled count.");
+  }
+  return {
+    profileId: row.profile_id,
+    walletAddress: getAddress(row.wallet_address),
+    formulaVersion: row.formula_version,
+    state: row.profile_state,
+    scoreNumerator: row.score_numerator === null
+      ? null : integerText(row.score_numerator, "Snapshot numerator", true),
+    scoreDenominator: row.score_denominator === null
+      ? null : integerText(row.score_denominator, "Snapshot denominator"),
+    scoreMicros: row.score_micros,
+    settledCount: row.settled_count,
+    sourceBlock: integerText(row.source_block, "Snapshot source block"),
+    capturedAt: assertDate(row.captured_at, "Snapshot capture time"),
   };
 }
 
@@ -178,6 +212,38 @@ export class SupabaseSocialRepository {
       if (data.length < PROFILE_PAGE_SIZE) return profiles;
     }
     throw new Error("The league exceeds the safe browser reconciliation limit.");
+  }
+
+  async listScoreSnapshots(): Promise<LeagueScoreSnapshot[]> {
+    const { data, error } = await this.client.from("league_score_snapshots")
+      .select("profile_id,wallet_address,formula_version,profile_state,score_numerator,score_denominator,score_micros,settled_count,source_block,captured_at")
+      .order("score_micros", { ascending: false, nullsFirst: false })
+      .order("settled_count", { ascending: false })
+      .limit(SNAPSHOT_QUERY_LIMIT);
+    if (error) throw error;
+    return data.map(mapScoreSnapshot);
+  }
+
+  async publishScoreSnapshot(snapshot: {
+    formulaVersion: "CYS-EDGE-v1";
+    state: "empty" | "provisional" | "verified";
+    scoreNumerator: bigint | null;
+    scoreDenominator: bigint | null;
+    scoreMicros: number | null;
+    settledCount: number;
+    sourceBlock: bigint;
+  }): Promise<string> {
+    const { data, error } = await this.client.rpc("publish_score_snapshot", {
+      p_formula_version: snapshot.formulaVersion,
+      p_profile_state: snapshot.state,
+      p_score_numerator: snapshot.scoreNumerator?.toString() ?? null,
+      p_score_denominator: snapshot.scoreDenominator?.toString() ?? null,
+      p_score_micros: snapshot.scoreMicros,
+      p_settled_count: snapshot.settledCount,
+      p_source_block: snapshot.sourceBlock.toString(),
+    });
+    if (error) throw error;
+    return data;
   }
 
   async enroll(displayName: string): Promise<string> {

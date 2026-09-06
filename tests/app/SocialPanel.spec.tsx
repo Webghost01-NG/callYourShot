@@ -6,6 +6,8 @@ import type { Address, Hex, WalletClient } from "viem";
 const repositoryMocks = vi.hoisted(() => ({
   authenticatedWallet: vi.fn(),
   listProfiles: vi.fn(),
+  listScoreSnapshots: vi.fn(),
+  publishScoreSnapshot: vi.fn(),
   signIn: vi.fn(),
   enroll: vi.fn(),
   createChallenge: vi.fn(),
@@ -17,6 +19,8 @@ vi.mock("../../src/social/repository.js", () => ({
   SupabaseSocialRepository: class {
     authenticatedWallet = repositoryMocks.authenticatedWallet;
     listProfiles = repositoryMocks.listProfiles;
+    listScoreSnapshots = repositoryMocks.listScoreSnapshots;
+    publishScoreSnapshot = repositoryMocks.publishScoreSnapshot;
     signIn = repositoryMocks.signIn;
     enroll = repositoryMocks.enroll;
     createChallenge = repositoryMocks.createChallenge;
@@ -32,6 +36,8 @@ describe("social competition panel", () => {
   beforeEach(() => {
     repositoryMocks.authenticatedWallet.mockReset().mockResolvedValue(null);
     repositoryMocks.listProfiles.mockReset().mockResolvedValue([]);
+    repositoryMocks.listScoreSnapshots.mockReset().mockResolvedValue([]);
+    repositoryMocks.publishScoreSnapshot.mockReset().mockResolvedValue("snapshot-profile");
     repositoryMocks.signIn.mockReset();
     repositoryMocks.enroll.mockReset().mockResolvedValue(undefined);
     repositoryMocks.createChallenge.mockReset();
@@ -59,6 +65,39 @@ describe("social competition panel", () => {
     );
     expect(screen.getByText("Social league is not configured")).toBeTruthy();
     expect(screen.getByText(/No sample players are shown/)).toBeTruthy();
+  });
+
+  it("bounds each leaderboard refresh and discloses its enrollment coverage", async () => {
+    const enrolledAt = "2026-09-06T12:00:00.000Z";
+    repositoryMocks.listProfiles.mockResolvedValue(Array.from({ length: 30 }, (_, index) => ({
+      id: `profile-${index}`,
+      walletAddress: `0x${(index + 1).toString(16).padStart(40, "0")}` as Address,
+      displayName: null,
+      enrolledAt,
+      formulaVersion: "CYS-EDGE-v1" as const,
+      updatedAt: enrolledAt,
+    })));
+    const loadPublicProfile = vi.fn().mockResolvedValue({
+      snapshotTimestampSec: 1_000n,
+      sourceBlock: 100n,
+      evidenceGaps: [],
+      profile: { state: "empty", skillScore: null, settledCount: 0, rounds: [] },
+    });
+
+    render(<SocialPanel
+      config={{
+        supabaseUrl: "https://project.supabase.co",
+        supabasePublishableKey: "sb_publishable_example",
+      }}
+      configError={null}
+      runtime={{ loadPublicProfile } as never}
+      connected={false}
+      onConnect={async () => null}
+    />);
+
+    expect(await screen.findByText(/24 of 30 enrolled wallets checked/i)).toBeTruthy();
+    expect(screen.getByText(/hard limit 24 per refresh/i)).toBeTruthy();
+    expect(loadPublicProfile).toHaveBeenCalledTimes(24);
   });
 
   it("rebuilds a settled receipt directly from DreamDEX without Supabase or live liquidity", async () => {
