@@ -37,6 +37,13 @@ limits concurrent contract and book reads. The UI receives only verified
 markets, preserves selection by `marketId`, and refreshes that exact ID before
 building an order. It never silently switches a reviewed call to another event.
 
+Issue #45 makes that existing verification boundary visible through closed-by-
+default evidence trails. A selected market trail exposes its configured origin,
+indexer/on-chain binding checks, real order-book constraints, and decoded fill
+state. A history trail exposes the fill, settlement state, and deterministic
+score inputs. These views do not create or persist new evidence; they render
+only values already returned and reconciled by the runtime.
+
 The core does not select or depend on:
 
 - a frontend or backend framework;

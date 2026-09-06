@@ -61,5 +61,8 @@ describe("verified profile panel", () => {
     expect(screen.getByRole("link", { name: /Fill receipt/ }).getAttribute("href")).toContain(fillHash);
     expect(screen.getByText("Final-result link unavailable")).toBeTruthy();
     expect(screen.getByText("Oracle link unavailable")).toBeTruthy();
+    expect(screen.getByText("Open verification trail")).toBeTruthy();
+    expect(screen.getByText(marketId)).toBeTruthy();
+    expect(screen.getByText(/40% confidence · won · 60.00 points/i)).toBeTruthy();
   });
 });
