@@ -6,6 +6,11 @@ import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
 import { buildLeagueBoard, type LeagueBoard, type VerifiedLeagueProfile } from "../social/leaderboard.js";
 import type { SocialConfig } from "../social/config.js";
 import type { Challenge, LeagueProfile } from "../social/model.js";
+import {
+  completedChallengeResult,
+  deriveChallengeLifecycle,
+  type ChallengeMarketState,
+} from "../social/challenge.js";
 import { SupabaseSocialRepository } from "../social/repository.js";
 import { challengeUrl, readSocialRoute, receiptUrl, type SocialRoute } from "../social/share.js";
 import type { BrowserDreamDexRuntime, LiveRound } from "./runtime.js";
@@ -354,10 +359,17 @@ export function SocialPanel({
   }
 
   async function acceptChallenge() {
-    if (!repository || route.kind !== "challenge") return;
+    if (!repository || !runtime || route.kind !== "challenge" || !challengeEvidence) return;
     setActionState("working");
     setActionMessage(undefined);
     try {
+      const exactRound = await runtime.refreshRound(challengeEvidence.challenge.marketId);
+      if (
+        exactRound.market.marketId.toLowerCase() !== challengeEvidence.challenge.marketId.toLowerCase()
+        || (exactRound.book.yesAsks.length === 0 && exactRound.book.noAsks.length === 0)
+      ) {
+        throw new Error("This challenge's Event Contract is no longer tradable.");
+      }
       await ensureLeagueIdentity();
       await repository.acceptChallenge(route.challengeId);
       const refreshed = await repository.getChallenge(route.challengeId);
@@ -408,12 +420,23 @@ export function SocialPanel({
     && item.market.expirySec * 1_000n > BigInt(Date.now())
     && (item.book.yesAsks.length > 0 || item.book.noAsks.length > 0),
   ) : undefined;
-  const challengeMarketState = challengedRound
+  const challengeMarketState: ChallengeMarketState = challengedRound
     ? "live"
     : marketDiscoveryState === "loading"
       ? "checking"
       : "unavailable";
-  const canAccept = challenge?.status === "open" && address?.toLowerCase() === challenge.invitedWallet.toLowerCase();
+  const challengeLifecycle = challenge && challengeEvidence ? deriveChallengeLifecycle({
+    status: challenge.status,
+    creator: challengeEvidence.creator,
+    opponent: challengeEvidence.opponent,
+    market: challengeMarketState,
+  }) : undefined;
+  const challengeResult = challengeLifecycle === "completed" && challengeEvidence?.creator && challengeEvidence.opponent
+    ? completedChallengeResult(challengeEvidence.creator, challengeEvidence.opponent)
+    : undefined;
+  const canAccept = challengeLifecycle === "open"
+    && challengeMarketState === "live"
+    && address?.toLowerCase() === challenge?.invitedWallet.toLowerCase();
   const canCancel = challenge?.status === "open" && address?.toLowerCase() === challenge.creatorWallet.toLowerCase();
   const sharedRoute = route.kind !== "league";
   const heading = route.kind === "challenge"
@@ -471,7 +494,7 @@ export function SocialPanel({
           {challengeState === "loading" && <span aria-live="polite">Rebuilding both records from DreamDEX…</span>}
           {challengeState === "not-found" && <span role="status">This challenge was not found or is no longer available.</span>}
           {challengeState === "error" && <span role="alert">{challengeError ?? "This challenge could not be verified."}</span>}
-          {challengeState === "ready" && challenge && challengeEvidence && <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>Status: {challenge.status}. This app compares independent trades in one market and never escrows funds.</p>{challengeMarketState === "checking" && <p className="shared-market-state" role="status">Checking whether this exact Event Contract is still tradable…</p>}{challengeMarketState === "live" && <p className="shared-market-state live" role="status">Exact Event Contract found and selected. <a href="#arena">Go to the matching market ↓</a></p>}{challengeMarketState === "unavailable" && <p className="shared-market-state unavailable" role="status">This exact Event Contract is no longer in the verified live lobby. It may have locked or be temporarily unavailable, so no replacement market has been selected.</p>}<div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>Accept with verified wallet</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}</>}
+          {challengeState === "ready" && challenge && challengeEvidence && <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>This app compares independent trades in one market and never escrows funds.</p><ChallengeLifecycleNotice lifecycle={challengeLifecycle!} result={challengeResult} creator={challenge.creatorWallet} opponent={challenge.invitedWallet} />{challengeMarketState === "checking" && <p className="shared-market-state" role="status">Checking whether this exact Event Contract is still tradable…</p>}{challengeMarketState === "live" && challengeLifecycle !== "completed" && <p className="shared-market-state live" role="status">Exact Event Contract found and selected. <a href="#arena">Go to the matching market ↓</a></p>}{challengeMarketState === "unavailable" && challengeLifecycle !== "completed" && <p className="shared-market-state unavailable" role="status">This exact Event Contract is no longer in the verified live lobby. It may have locked or be temporarily unavailable, so no replacement market has been selected.</p>}<div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>Accept with verified wallet</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}</>}
         </article>
       )}
 
@@ -527,4 +550,37 @@ function ChallengeSide({ round }: { round: ProfileRound | null }) {
       {round?.settlementTransactionHash && <a href={explorerTransaction(round.settlementTransactionHash)} target="_blank" rel="noreferrer">Verify result ↗</a>}
     </div>
   );
+}
+
+function ChallengeLifecycleNotice({
+  lifecycle,
+  result,
+  creator,
+  opponent,
+}: {
+  lifecycle: ReturnType<typeof deriveChallengeLifecycle>;
+  result?: ReturnType<typeof completedChallengeResult>;
+  creator: Address;
+  opponent: Address;
+}) {
+  const message = lifecycle === "completed"
+    ? result === "creator"
+      ? `Completed · ${shortAddress(creator)} made the stronger call.`
+      : result === "opponent"
+        ? `Completed · ${shortAddress(opponent)} made the stronger call.`
+        : result === "draw"
+          ? "Completed · both calls earned the same score."
+          : "Completed · the settled comparison is void or unscored."
+    : lifecycle === "expired"
+      ? "Challenge expired · the invitation was not accepted while its Event Contract was tradable."
+      : lifecycle === "locked-incomplete"
+        ? "Market closed · the accepted challenge cannot receive another call. Existing evidence remains visible."
+        : lifecycle === "awaiting-settlement"
+          ? "Both calls are locked · waiting for DreamDEX settlement."
+          : lifecycle === "cancelled"
+            ? "Challenge cancelled · no further action is available."
+            : lifecycle === "accepted"
+              ? "Challenge accepted · both players must make their own DreamDEX call before the market locks."
+              : "Challenge open · the invited wallet may accept while this exact market remains live.";
+  return <p className={`challenge-lifecycle ${lifecycle}`} role="status">{message}</p>;
 }

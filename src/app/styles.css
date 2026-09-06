@@ -457,6 +457,9 @@ code { color: var(--muted); font: 400 10px "DM Mono", monospace; }
 .shared-market-state.live { border-color: rgba(124, 230, 92, .3); color: var(--up); }
 .shared-market-state.live a { color: var(--lime); font-weight: 700; }
 .shared-market-state.unavailable { border-color: rgba(255, 207, 112, .35); color: var(--warning); }
+.challenge-lifecycle { margin: 12px 0 !important; color: var(--muted-bright) !important; font-weight: 700; }
+.challenge-lifecycle.completed { color: var(--up) !important; }
+.challenge-lifecycle.expired, .challenge-lifecycle.locked-incomplete, .challenge-lifecycle.cancelled { color: var(--warning) !important; }
 
 footer {
   min-height: 96px;
