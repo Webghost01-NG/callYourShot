@@ -14,7 +14,11 @@ const runtimeMocks = vi.hoisted(() => ({
 
 vi.mock("wagmi", () => ({
   useAccount: () => ({ address: undefined, chainId: undefined, isConnected: false }),
-  useConnect: () => ({ connectors: [{}], connectAsync: vi.fn(), isPending: false }),
+  useConnect: () => ({
+    connectors: [{ id: "injected", name: "Browser wallet", type: "injected", getProvider: vi.fn() }],
+    connectAsync: vi.fn(),
+    isPending: false,
+  }),
   useDisconnect: () => ({ disconnect: vi.fn() }),
   useSwitchChain: () => ({ switchChainAsync: vi.fn() }),
   useWalletClient: () => ({ data: undefined }),
@@ -114,6 +118,22 @@ describe("live round resilience", () => {
     expect(lower.getAttribute("aria-pressed")).toBe("false");
     expect(screen.getByText("Dream RPC").closest("p")?.textContent)
       .toMatch(/skew 50 blocks.*recovered after 1 failed route/i);
+  });
+
+  it("opens an explicit wallet chooser from the header connection action", async () => {
+    runtimeMocks.loadMarkets.mockResolvedValue({ rounds: [], rejectedCount: 0, truncated: false });
+    render(<App />);
+
+    const trigger = screen.getByRole("button", { name: "Connect wallet" });
+    await userEvent.click(trigger);
+
+    expect(screen.getByRole("dialog", { name: "Choose your wallet" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Browser wallet.*wallet extension/i })).toBeTruthy();
+    expect(screen.getByText(/Mobile\/QR connection is not configured/i)).toBeTruthy();
+
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Choose your wallet" })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
 
   it("rediscovers the market after the displayed round locks", async () => {

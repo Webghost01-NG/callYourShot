@@ -53,6 +53,13 @@ Once a call enters review, automatic discovery is blocked and its runtime route
 remains pinned through preflight, submission, receipt, and fill decoding. See
 [ENDPOINT_RECOVERY.md](ENDPOINT_RECOVERY.md).
 
+Issue #47 adds an explicit connection boundary above Wagmi. Browser extensions
+use the injected connector; ordinary mobile browsers and desktop QR flows use
+WalletConnect only when a public Reown project ID is configured. Both paths
+still produce an EIP-1193 provider for the same account, chain-switch,
+review-invalidation, and wallet-controlled transaction pipeline. See
+[WALLET_CONNECTION.md](WALLET_CONNECTION.md).
+
 The core does not select or depend on:
 
 - a frontend or backend framework;

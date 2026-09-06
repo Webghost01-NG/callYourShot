@@ -17,8 +17,10 @@ import {
 import { isUserRejectedRequest, publicErrorMessage, transactionFailureMessage } from "./errors.js";
 import { buildCallQuote, selectedOutcomePrice } from "./quote.js";
 import { MarketVerificationTrail } from "./MarketVerificationTrail.js";
+import { WalletChooser } from "./WalletChooser.js";
 import type { EndpointDiagnostics } from "./endpointFailover.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
+import { walletConnectionEnvironment } from "./walletEnvironment.js";
 import type {
   ConnectedWallet,
   LeagueEnrollmentSnapshot,
@@ -135,6 +137,8 @@ export function App() {
   });
   const [now, setNow] = useState(Date.now());
   const [runtimeGeneration, setRuntimeGeneration] = useState(0);
+  const [walletChooserOpen, setWalletChooserOpen] = useState(false);
+  const walletChooserTrigger = useRef<HTMLElement | null>(null);
   const roundRequestId = useRef(0);
   const closedRuntimes = useRef(new WeakSet<BrowserDreamDexRuntime>());
   const selectedMarketIdRef = useRef<Hex | undefined>(undefined);
@@ -353,13 +357,7 @@ export function App() {
   async function reviewCall() {
     if (!round || !quote) return;
     if (!isConnected) {
-      const connector = connectors[0];
-      if (!connector) {
-        setTxError("No injected wallet is available in this browser.");
-        setTxState("failed");
-        return;
-      }
-      await connectWallet();
+      await requestWalletConnection();
       return;
     }
     if (requiresLeagueEnrollment) {
@@ -460,15 +458,35 @@ export function App() {
   const labels = outcomeLabels(round?.market.indexed.question ?? "");
   const collateralLabel = round?.collateralSymbol ?? "Collateral";
 
-  async function connectWallet(): Promise<ConnectedWallet | null> {
-    const connector = activeConnector ?? connectors[0];
+  async function requestWalletConnection(): Promise<ConnectedWallet | null> {
+    if (isConnected) {
+      const connectedConnector = activeConnector ?? connectors[0];
+      if (connectedConnector) return connectWallet(connectedConnector.id);
+    }
+    walletChooserTrigger.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    setWalletChooserOpen(true);
+    return null;
+  }
+
+  function closeWalletChooser() {
+    setWalletChooserOpen(false);
+    window.requestAnimationFrame(() => walletChooserTrigger.current?.focus());
+  }
+
+  async function connectWallet(connectorId: string): Promise<ConnectedWallet | null> {
+    const connector = isConnected && activeConnector
+      ? activeConnector
+      : connectors.find((candidate) => candidate.id === connectorId);
     if (!connector) {
-      setTxError("No injected wallet is available in this browser.");
+      setTxError("That wallet connection is no longer available. Choose a wallet again.");
       setTxState("failed");
+      setWalletChooserOpen(true);
       return null;
     }
     try {
-      return await resolveConnectedWallet({
+      const connectedWallet = await resolveConnectedWallet({
         currentAddress: isConnected ? address : undefined,
         currentChainId: isConnected ? chainId : undefined,
         connect: () => connectAsync({ connector }),
@@ -479,9 +497,12 @@ export function App() {
           return provider as EIP1193Provider | undefined;
         },
       });
+      closeWalletChooser();
+      return connectedWallet;
     } catch (error) {
       setTxError(errorMessage(error));
       setTxState("rejected");
+      closeWalletChooser();
       return null;
     }
   }
@@ -505,7 +526,7 @@ export function App() {
         connected={isConnected}
         address={address}
         walletClient={walletClient}
-        onConnect={connectWallet}
+        onConnect={requestWalletConnection}
         onEnrollmentChange={setLeagueEnrollment}
         onSelectMarket={selectMarket}
       />
@@ -528,13 +549,27 @@ export function App() {
           </nav>
           <div className="header-actions">
             <span className="network-badge"><i />Somnia testnet</span>
-            <button className="wallet-button" onClick={() => isConnected ? disconnect() : void connectWallet()} disabled={isConnecting}>
+            <button className="wallet-button" onClick={() => isConnected ? disconnect() : void requestWalletConnection()} disabled={isConnecting}>
               <span className={isConnected ? "status-dot connected" : "status-dot"} />
               {isConnecting ? "Connecting…" : shortAddress(address)}
             </button>
           </div>
         </div>
       </header>
+
+      {walletChooserOpen && (
+        <WalletChooser
+          choices={connectors.map((connector) => ({
+            id: connector.id,
+            name: connector.name,
+            type: connector.type,
+          }))}
+          configurationError={walletConnectionEnvironment.error}
+          connecting={isConnecting}
+          onChoose={(connectorId) => void connectWallet(connectorId)}
+          onClose={closeWalletChooser}
+        />
+      )}
 
       <main>
         {socialRoute.kind !== "league" && socialPanel}
