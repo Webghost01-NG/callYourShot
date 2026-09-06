@@ -97,6 +97,14 @@ describe("live round resilience", () => {
       rounds: [liveRound(BigInt(Math.floor(Date.now() / 1_000) + 900))],
       rejectedCount: 0,
       truncated: false,
+      endpoint: {
+        endpointId: "dream-rpc",
+        endpointLabel: "Dream RPC",
+        rpcBlock: 100_000n,
+        indexerBlock: 99_950n,
+        skewBlocks: 50n,
+        failedAttempts: 1,
+      },
     });
     render(<App />);
 
@@ -104,6 +112,8 @@ describe("live round resilience", () => {
     const lower = screen.getByRole("button", { name: /Lower/ });
     expect(higher.getAttribute("aria-pressed")).toBe("true");
     expect(lower.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByText("Dream RPC").closest("p")?.textContent)
+      .toMatch(/skew 50 blocks.*recovered after 1 failed route/i);
   });
 
   it("rediscovers the market after the displayed round locks", async () => {

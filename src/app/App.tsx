@@ -17,6 +17,7 @@ import {
 import { isUserRejectedRequest, publicErrorMessage, transactionFailureMessage } from "./errors.js";
 import { buildCallQuote, selectedOutcomePrice } from "./quote.js";
 import { MarketVerificationTrail } from "./MarketVerificationTrail.js";
+import type { EndpointDiagnostics } from "./endpointFailover.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
 import type {
   ConnectedWallet,
@@ -113,6 +114,7 @@ export function App() {
   const [rounds, setRounds] = useState<LiveRound[]>([]);
   const [selectedMarketId, setSelectedMarketId] = useState<Hex>();
   const [marketNotice, setMarketNotice] = useState<string>();
+  const [endpointDiagnostics, setEndpointDiagnostics] = useState<EndpointDiagnostics>();
   const [runtime, setRuntime] = useState<BrowserDreamDexRuntime>();
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState<string>();
@@ -178,6 +180,7 @@ export function App() {
       const next = await withMarketDiscoveryDeadline(activeRuntime.loadMarkets());
       if (requestId !== roundRequestId.current) return;
       setRounds(next.rounds);
+      setEndpointDiagnostics(next.endpoint);
       setSelectedMarketId((current) => next.rounds.some((item) =>
         item.market.marketId.toLowerCase() === current?.toLowerCase(),
       ) ? current : next.rounds[0]?.market.marketId);
@@ -200,6 +203,7 @@ export function App() {
       setRounds([]);
       setSelectedMarketId(undefined);
       setMarketNotice(undefined);
+      setEndpointDiagnostics(undefined);
       setLoadError(message);
       setLoadState(message.includes("headroom") || message.includes("Trading") ? "stale" : "error");
     }
@@ -598,6 +602,10 @@ export function App() {
                   </button>;
                 })}
               </div>
+              {endpointDiagnostics && <p className="endpoint-diagnostics" role="status">
+                <span aria-hidden="true">✓</span>
+                <span><strong>{endpointDiagnostics.endpointLabel}</strong> · verified Shannon route · indexer/RPC skew {endpointDiagnostics.skewBlocks.toString()} blocks{endpointDiagnostics.failedAttempts > 0 ? ` · recovered after ${endpointDiagnostics.failedAttempts} failed route` : ""}</span>
+              </p>}
               {marketNotice && <p className="market-notice">{marketNotice}</p>}
             </section>
           )}

@@ -44,6 +44,15 @@ state. A history trail exposes the fill, settlement state, and deterministic
 score inputs. These views do not create or persist new evidence; they render
 only values already returned and reconciled by the runtime.
 
+Issue #46 introduces whole-bundle read recovery across the two HTTP/WebSocket
+aliases shipped by the official Shannon chain definition. Before discovery, a
+bundle must return chain ID 50312 and a DreamDEX indexer snapshot within the
+documented skew bound. A failed bundle is replaced as one unit, preventing an
+indexer from being silently combined with a different in-flight chain read.
+Once a call enters review, automatic discovery is blocked and its runtime route
+remains pinned through preflight, submission, receipt, and fill decoding. See
+[ENDPOINT_RECOVERY.md](ENDPOINT_RECOVERY.md).
+
 The core does not select or depend on:
 
 - a frontend or backend framework;
@@ -68,6 +77,8 @@ The core does not select or depend on:
 - The browser owns one Supabase Auth client per configured project for the page
   lifetime. React component remounts reuse that client so one persisted-session
   storage key never has competing Auth listeners.
+- Endpoint recovery rotates only complete, official Shannon bundles. It never
+  retries or resubmits an uncertain wallet write through another route.
 
 ## Verification
 

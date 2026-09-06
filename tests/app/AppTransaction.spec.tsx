@@ -114,6 +114,7 @@ function plan(): OrderPlan {
   const live = round();
   return {
     account,
+    endpointId: "somnia-infrastructure",
     market: live.market,
     side: "BUY_YES",
     yesPrice: 620_000n,

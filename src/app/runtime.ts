@@ -24,7 +24,12 @@ import { DreamDexAdapter, type DiscoveredMarket } from "../dreamdex/adapter.js";
 import { DreamDexProfileReconciler } from "../dreamdex/reconciliation.js";
 import { assertTradingWithHeadroom } from "../core/guards.js";
 import { maximumBuyCost } from "../core/units.js";
-import type { PublicAppConfig } from "./config.js";
+import type { DreamDexEndpointBundle, PublicAppConfig } from "./config.js";
+import {
+  assertEndpointHealth,
+  attemptEndpointBundles,
+  type EndpointDiagnostics,
+} from "./endpointFailover.js";
 import { selectedOutcomePrice } from "./quote.js";
 
 const poolParametersAbi = parseAbi([
@@ -46,10 +51,12 @@ export interface LiveMarketBoard {
   rounds: LiveRound[];
   rejectedCount: number;
   truncated: boolean;
+  endpoint: EndpointDiagnostics;
 }
 
 export interface OrderPlan {
   account: Address;
+  endpointId: DreamDexEndpointBundle["id"];
   market: DiscoveredMarket;
   side: "BUY_YES" | "BUY_NO";
   yesPrice: bigint;
@@ -80,36 +87,80 @@ export function assertPlanAuthorization(
   }
 }
 
+interface RuntimeConnection {
+  bundle: DreamDexEndpointBundle;
+  exchange: SomniaMarkets;
+  publicClient: ReturnType<typeof createPublicClient>;
+}
+
 export class BrowserDreamDexRuntime {
-  private readonly exchange: SomniaMarkets;
-  private readonly publicClient;
+  private readonly connections = new Map<number, RuntimeConnection>();
+  private activeEndpointIndex = 0;
   private readonly collateralSymbols = new Map<string, Promise<string>>();
 
-  constructor(private readonly config: PublicAppConfig) {
-    this.exchange = new SomniaMarkets({
-      indexerUrl: config.indexerUrl,
+  constructor(private readonly config: PublicAppConfig) {}
+
+  private get endpointBundles(): readonly DreamDexEndpointBundle[] {
+    return this.config.endpointBundles?.length ? this.config.endpointBundles : [{
+      id: "dream-rpc",
+      label: "Configured DreamDEX route",
+      indexerUrl: this.config.indexerUrl,
+      wsRpcUrl: this.config.wsRpcUrl,
+      httpRpcUrl: this.config.httpRpcUrl,
+    }];
+  }
+
+  private connection(index: number): RuntimeConnection {
+    const cached = this.connections.get(index);
+    if (cached) return cached;
+    const bundle = this.endpointBundles[index];
+    if (!bundle) throw new Error("The selected DreamDEX endpoint bundle is unavailable.");
+    const exchange = new SomniaMarkets({
+      indexerUrl: bundle.indexerUrl,
       chain: somniaShannon,
-      wsRpcUrl: config.wsRpcUrl,
+      wsRpcUrl: bundle.wsRpcUrl,
       addresses: SOMNIA_TESTNET_ADDRESSES,
     });
-    this.publicClient = createPublicClient({
+    const publicClient = createPublicClient({
       chain: somniaShannon,
-      transport: http(config.httpRpcUrl),
+      transport: http(bundle.httpRpcUrl),
+    });
+    const connection = { bundle, exchange, publicClient };
+    this.connections.set(index, connection);
+    return connection;
+  }
+
+  private get activeConnection(): RuntimeConnection {
+    return this.connection(this.activeEndpointIndex);
+  }
+
+  private async endpointHealth(connection: RuntimeConnection) {
+    const [rpcChainId, rpcBlock, indexerStatus] = await Promise.all([
+      connection.publicClient.getChainId(),
+      connection.publicClient.getBlockNumber(),
+      connection.exchange.client.getSyncStatus(somniaShannon.id),
+    ]);
+    return assertEndpointHealth({
+      bundle: connection.bundle,
+      expectedChainId: somniaShannon.id,
+      rpcChainId,
+      rpcBlock,
+      indexerStatus,
     });
   }
 
-  private adapter(walletClient?: WalletClient) {
+  private adapter(walletClient?: WalletClient, connection = this.activeConnection) {
     const module = SOMNIA_TESTNET_ADDRESSES.binaryModule;
     if (!module) throw new Error("DreamDEX binary module is unavailable.");
     const trader = walletClient?.account
-      ? this.exchange.client.createTrader({ walletClient, account: walletClient.account })
+      ? connection.exchange.client.createTrader({ walletClient, account: walletClient.account })
       : undefined;
     return new DreamDexAdapter(
-      this.exchange.client,
+      connection.exchange.client,
       trader,
       module,
       async (pool, priceScale) => {
-        const [tickSize, minQuantity, lotSize] = await this.publicClient.readContract({
+        const [tickSize, minQuantity, lotSize] = await connection.publicClient.readContract({
           address: pool,
           abi: poolParametersAbi,
           functionName: "getOrderBookParameters",
@@ -126,11 +177,11 @@ export class BrowserDreamDexRuntime {
     };
   }
 
-  private async readRound(market: DiscoveredMarket): Promise<LiveRound> {
-    const key = market.collateral.toLowerCase();
+  private async readRound(connection: RuntimeConnection, market: DiscoveredMarket): Promise<LiveRound> {
+    const key = `${connection.bundle.id}:${market.collateral.toLowerCase()}`;
     let symbol = this.collateralSymbols.get(key);
     if (!symbol) {
-      symbol = this.publicClient.readContract({
+      symbol = connection.publicClient.readContract({
         address: market.collateral,
         abi: erc20MetadataAbi,
         functionName: "symbol",
@@ -141,7 +192,7 @@ export class BrowserDreamDexRuntime {
       this.collateralSymbols.set(key, symbol);
     }
     const [book, collateralSymbol] = await Promise.all([
-      this.exchange.client.getBinaryOrderBook(market.pool, {
+      connection.exchange.client.getBinaryOrderBook(market.pool, {
         decimals: market.indexed.quoteDecimals,
         depth: 10,
       }),
@@ -151,15 +202,18 @@ export class BrowserDreamDexRuntime {
   }
 
   async loadMarkets(): Promise<LiveMarketBoard> {
-    let lastError: unknown;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const discovery = await this.adapter().discoverMarkets(this.marketCriteria());
+    const result = await attemptEndpointBundles({
+      bundles: this.endpointBundles,
+      startingIndex: this.activeEndpointIndex,
+      attempt: async (_bundle, index) => {
+        const connection = this.connection(index);
+        const endpoint = await this.endpointHealth(connection);
+        const discovery = await this.adapter(undefined, connection).discoverMarkets(this.marketCriteria());
         const rounds: LiveRound[] = [];
         let rejectedCount = discovery.rejectedCount;
         for (let start = 0; start < discovery.markets.length; start += 4) {
           const batch = discovery.markets.slice(start, start + 4);
-          const settled = await Promise.allSettled(batch.map((market) => this.readRound(market)));
+          const settled = await Promise.allSettled(batch.map((market) => this.readRound(connection, market)));
           for (const result of settled) {
             if (result.status === "fulfilled") rounds.push(result.value);
             else rejectedCount += 1;
@@ -175,13 +229,14 @@ export class BrowserDreamDexRuntime {
           return left.market.expirySec < right.market.expirySec ? -1
             : left.market.expirySec > right.market.expirySec ? 1 : 0;
         });
-        return { rounds, rejectedCount, truncated: discovery.truncated };
-      } catch (error) {
-        lastError = error;
-        if (attempt === 0) await new Promise((resolve) => window.setTimeout(resolve, 750));
-      }
-    }
-    throw lastError;
+        return { rounds, rejectedCount, truncated: discovery.truncated, endpoint };
+      },
+    });
+    this.activeEndpointIndex = result.index;
+    return {
+      ...result.value,
+      endpoint: { ...result.value.endpoint, failedAttempts: result.failedAttempts },
+    };
   }
 
   async loadRound(): Promise<LiveRound> {
@@ -189,8 +244,9 @@ export class BrowserDreamDexRuntime {
   }
 
   async refreshRound(marketId: Hex): Promise<LiveRound> {
-    const market = await this.adapter().discoverMarketById(this.marketCriteria(), marketId);
-    return this.readRound(market);
+    const connection = this.activeConnection;
+    const market = await this.adapter(undefined, connection).discoverMarketById(this.marketCriteria(), marketId);
+    return this.readRound(connection, market);
   }
 
   async loadProfile(account: Address, walletClient: WalletClient) {
@@ -201,10 +257,11 @@ export class BrowserDreamDexRuntime {
   }
 
   async loadPublicProfile(account: Address, minimumTimestampSec?: bigint) {
+    const connection = this.activeConnection;
     const readOnlyWallet = createWalletClient({
       account,
       chain: somniaShannon,
-      transport: http(this.config.httpRpcUrl),
+      transport: http(connection.bundle.httpRpcUrl),
     });
     return this.reconcileProfile(account, readOnlyWallet, minimumTimestampSec);
   }
@@ -214,14 +271,15 @@ export class BrowserDreamDexRuntime {
     walletClient: WalletClient,
     minimumTimestampSec?: bigint,
   ) {
-    const adapter = this.adapter(walletClient);
+    const connection = this.activeConnection;
+    const adapter = this.adapter(walletClient, connection);
     const reconciler = new DreamDexProfileReconciler(
-      this.exchange.client,
+      connection.exchange.client,
       (marketId) => adapter.getSettlement(marketId),
       async (marketId, blockNumber) => {
         const module = SOMNIA_TESTNET_ADDRESSES.binaryModule;
         if (!module) return null;
-        const logs = await this.publicClient.getLogs({
+        const logs = await connection.publicClient.getLogs({
           address: module,
           event: marketFinalizedEvent,
           args: { marketId },
@@ -244,6 +302,7 @@ export class BrowserDreamDexRuntime {
     yesPrice: bigint;
     quantity: bigint;
   }): Promise<OrderPlan> {
+    const connection = this.activeConnection;
     const account = input.walletClient.account?.address;
     if (!account) throw new Error("Connect a wallet before reviewing your call.");
     assertPlanAuthorization(account, account, input.walletClient.chain?.id);
@@ -257,12 +316,12 @@ export class BrowserDreamDexRuntime {
       input.quantity,
       input.market.constraints.priceScale,
     );
-    const allowance = await this.exchange.client.getErc20Allowance(
+    const allowance = await connection.exchange.client.getErc20Allowance(
       input.market.collateral,
       account,
       input.market.pool,
     );
-    const unsigned = await this.adapter(input.walletClient).prepareOrder(input.market, {
+    const unsigned = await this.adapter(input.walletClient, connection).prepareOrder(input.market, {
       side: input.side,
       price: input.yesPrice,
       quantity: input.quantity,
@@ -285,6 +344,7 @@ export class BrowserDreamDexRuntime {
     } satisfies UnsignedCall : undefined;
     return {
       account,
+      endpointId: connection.bundle.id,
       market: input.market,
       side: input.side,
       yesPrice: input.yesPrice,
@@ -304,7 +364,10 @@ export class BrowserDreamDexRuntime {
     const account = walletClient.account;
     assertPlanAuthorization(plan.account, account?.address, walletClient.chain?.id);
     if (!account) throw new Error("Wallet disconnected before authorization.");
-    const live = await this.exchange.client.getMarketOnchain(plan.market.marketId);
+    const endpointIndex = this.endpointBundles.findIndex((bundle) => bundle.id === plan.endpointId);
+    if (endpointIndex < 0) throw new Error("The reviewed DreamDEX route is no longer configured.");
+    const connection = this.connection(endpointIndex);
+    const live = await connection.exchange.client.getMarketOnchain(plan.market.marketId);
     try {
       assertTradingWithHeadroom({
         status: live.status,
@@ -323,7 +386,7 @@ export class BrowserDreamDexRuntime {
     }
     if (plan.approval) {
       const { description: _approvalDescription, ...approval } = plan.approval;
-      const approvalGas = await this.estimateCallGas(account.address, approval);
+      const approvalGas = await this.estimateCallGas(connection, account.address, approval);
       const approvalHash = await walletClient.sendTransaction({
         ...approval,
         account,
@@ -331,12 +394,12 @@ export class BrowserDreamDexRuntime {
         gas: approvalGas,
       });
       progress.onApprovalSubmitted(approvalHash);
-      const approvalReceipt = await this.publicClient.waitForTransactionReceipt({ hash: approvalHash });
+      const approvalReceipt = await connection.publicClient.waitForTransactionReceipt({ hash: approvalHash });
       if (approvalReceipt.status !== "success") throw new Error("Token approval reverted.");
       progress.onApprovalConfirmed(approvalHash);
     }
     const { description: _orderDescription, ...order } = plan.order;
-    const orderGas = await this.estimateCallGas(account.address, order);
+    const orderGas = await this.estimateCallGas(connection, account.address, order);
     progress.onOrderRequested();
     const hash = await walletClient.sendTransaction({
       ...order,
@@ -345,7 +408,7 @@ export class BrowserDreamDexRuntime {
       gas: orderGas,
     });
     progress.onOrderSubmitted(hash);
-    const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+    const receipt = await connection.publicClient.waitForTransactionReceipt({ hash });
     const fills = receipt.logs.flatMap((log) => {
       if (log.address.toLowerCase() !== plan.market.pool.toLowerCase()) return [];
       try {
@@ -363,15 +426,16 @@ export class BrowserDreamDexRuntime {
         return [];
       }
     });
-    return this.adapter(walletClient).verifyOrder({ hash, receipt, fills });
+    return this.adapter(walletClient, connection).verifyOrder({ hash, receipt, fills });
   }
 
   private async estimateCallGas(
+    connection: RuntimeConnection,
     account: Hex,
     call: Pick<UnsignedCall, "to" | "data" | "value">,
   ) {
     try {
-      const estimate = await this.publicClient.estimateGas({
+      const estimate = await connection.publicClient.estimateGas({
         account,
         to: call.to,
         data: call.data,
@@ -396,7 +460,8 @@ export class BrowserDreamDexRuntime {
     }
   }
 
-  close() {
-    return this.exchange.close();
+  async close() {
+    await Promise.allSettled([...this.connections.values()].map((connection) => connection.exchange.close()));
+    this.connections.clear();
   }
 }

@@ -18,6 +18,31 @@ describe("public configuration", () => {
     }));
     expect(config.operatorId).toBe(2);
     expect(config.venueId).toHaveLength(66);
+    expect(config.endpointBundles.map((endpoint) => endpoint.id)).toEqual([
+      "somnia-infrastructure",
+      "dream-rpc",
+    ]);
+  });
+
+  it("accepts only official Shannon endpoint bundles and keeps overrides paired", () => {
+    const common = {
+      VITE_DREAMDEX_OPERATOR_ID: "2",
+      VITE_DREAMDEX_VENUE_ID: `0x${"a".repeat(64)}`,
+    };
+    const config = readPublicConfig(env({
+      ...common,
+      VITE_SOMNIA_HTTP_RPC_URL: "https://dream-rpc.somnia.network/",
+      VITE_SOMNIA_WS_RPC_URL: "wss://dream-rpc.somnia.network/ws",
+    }));
+    expect(config.endpointBundles[0]?.id).toBe("dream-rpc");
+    expect(() => readPublicConfig(env({
+      ...common,
+      VITE_SOMNIA_HTTP_RPC_URL: "https://rpc.example.test",
+    }))).toThrow(/official Shannon RPC bundle/i);
+    expect(() => readPublicConfig(env({
+      ...common,
+      VITE_DREAMDEX_INDEXER_URL: "https://indexer.example.test/graphql",
+    }))).toThrow(/official DreamDEX Shannon indexer/i);
   });
 });
 

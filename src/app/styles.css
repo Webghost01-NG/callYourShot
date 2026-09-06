@@ -268,6 +268,9 @@ h1 em { color: var(--lime); font-style: normal; }
 .market-option-bottom i { color: var(--lime); font-size: 18px; font-style: normal; }
 .market-live::before { width: 6px; height: 6px; display: inline-block; margin-right: 6px; content: ""; border-radius: 50%; background: var(--up); }
 .market-notice { margin: 12px 0 0; color: #c2b680; font-size: 12px; line-height: 1.55; }
+.endpoint-diagnostics { margin: 14px 0 0; display: flex; align-items: center; gap: 8px; color: var(--muted); font: 400 10px "DM Mono", monospace; }
+.endpoint-diagnostics > span:first-child { width: 17px; height: 17px; display: grid; flex: 0 0 auto; place-items: center; border: 1px solid rgba(186, 255, 60, .35); border-radius: 50%; color: var(--lime); font-size: 9px; }
+.endpoint-diagnostics strong { color: var(--muted-bright); }
 
 .round-card {
   border: 1px solid var(--line-bright);
