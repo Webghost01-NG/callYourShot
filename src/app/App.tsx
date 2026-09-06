@@ -16,7 +16,11 @@ import {
 import { isUserRejectedRequest, publicErrorMessage, transactionFailureMessage } from "./errors.js";
 import { buildCallQuote, selectedOutcomePrice } from "./quote.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
-import type { ConnectedWallet } from "./SocialPanel.js";
+import type {
+  ConnectedWallet,
+  LeagueEnrollmentSnapshot,
+  LeagueEnrollmentStatus,
+} from "./SocialPanel.js";
 
 type LoadState = "loading" | "ready" | "empty" | "stale" | "error";
 type TxState = "idle" | "preparing" | "review" | "approval-requested" | "approval-submitted" | "approval-confirmed" | "order-requested" | "submitted" | "filled" | "unfilled" | "rejected" | "failed";
@@ -121,6 +125,9 @@ export function App() {
   const [profileState, setProfileState] = useState<ProfileLoadState>("idle");
   const [profileResult, setProfileResult] = useState<ReconciledProfile>();
   const [profileError, setProfileError] = useState<string>();
+  const [leagueEnrollment, setLeagueEnrollment] = useState<LeagueEnrollmentSnapshot>({
+    status: "unavailable",
+  });
   const [now, setNow] = useState(Date.now());
   const [runtimeGeneration, setRuntimeGeneration] = useState(0);
   const roundRequestId = useRef(0);
@@ -261,6 +268,15 @@ export function App() {
 
   const transactionInFlight = ["preparing", "review", "approval-requested", "approval-submitted", "approval-confirmed", "order-requested", "submitted"].includes(txState);
   const automaticRefreshBlocked = transactionInFlight || txState === "filled";
+  const leagueEnrollmentStatus: LeagueEnrollmentStatus = !socialConfigResult.config
+    ? "unavailable"
+    : !isConnected || !address
+      ? "disconnected"
+      : leagueEnrollment.address?.toLowerCase() === address.toLowerCase()
+        ? leagueEnrollment.status
+        : "checking";
+  const requiresLeagueEnrollment = leagueEnrollmentStatus === "not-enrolled";
+  const checkingLeagueEnrollment = leagueEnrollmentStatus === "checking";
 
   useEffect(() => {
     if (!runtime || automaticRefreshBlocked) return;
@@ -338,6 +354,11 @@ export function App() {
       await connectWallet();
       return;
     }
+    if (requiresLeagueEnrollment) {
+      focusLeagueEnrollment();
+      return;
+    }
+    if (checkingLeagueEnrollment) return;
     setTxState("preparing");
     setTxError(undefined);
     setTxHash(undefined);
@@ -455,6 +476,12 @@ export function App() {
       setTxState("rejected");
       return null;
     }
+  }
+
+  function focusLeagueEnrollment() {
+    const enrollment = document.getElementById("league-identity");
+    enrollment?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    enrollment?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
   }
 
   return (
@@ -599,6 +626,35 @@ export function App() {
                     <div><span>Possible payout</span><strong>{quote ? `${formatUnits(quote.possiblePayout, decimals)} ${collateralLabel}` : "—"}</strong></div>
                   </div>
 
+                  {isConnected && socialConfigResult.config && (
+                    <div className={`league-call-gate ${leagueEnrollmentStatus}`} role="status">
+                      <span aria-hidden="true">{leagueEnrollmentStatus === "enrolled" ? "✓" : leagueEnrollmentStatus === "not-enrolled" ? "!" : "·"}</span>
+                      <div>
+                        <strong>{leagueEnrollmentStatus === "enrolled"
+                          ? "League entry active"
+                          : leagueEnrollmentStatus === "not-enrolled"
+                            ? "Join before making this call"
+                            : leagueEnrollmentStatus === "checking"
+                              ? "Checking league enrollment…"
+                              : "League status unavailable"}</strong>
+                        <small>{leagueEnrollmentStatus === "enrolled"
+                          ? "A verified fill can count toward your public competition record."
+                          : leagueEnrollmentStatus === "not-enrolled"
+                            ? "Calls made before enrollment stay verifiable, but cannot rank."
+                            : leagueEnrollmentStatus === "checking"
+                              ? "Trading will unlock as soon as your status is confirmed."
+                              : "This call remains verifiable, but ranking cannot be confirmed right now."}</small>
+                      </div>
+                    </div>
+                  )}
+
+                  {isConnected && !socialConfigResult.config && (
+                    <div className="league-call-gate unavailable" role="status">
+                      <span aria-hidden="true">·</span>
+                      <div><strong>Standalone verification</strong><small>The social league is unavailable. This call can still appear in your DreamDEX-backed personal record.</small></div>
+                    </div>
+                  )}
+
                   {txState === "review" && plan ? (
                     <div className="review-panel" role="group" aria-labelledby="review-title">
                       <p className="eyebrow">Review before signing</p>
@@ -607,8 +663,18 @@ export function App() {
                       <div className="review-actions"><button className="secondary" onClick={() => setTxState("idle")}>Go back</button><button className="primary" onClick={() => void confirmCall()}>Confirm in wallet</button></div>
                     </div>
                   ) : (
-                    <button className="primary call-button" onClick={() => void reviewCall()} disabled={!quote || loadState !== "ready" || ["preparing", "approval-requested", "approval-submitted", "approval-confirmed", "order-requested", "submitted", "filled"].includes(txState)}>
-                      {!isConnected ? "Connect wallet to call it" : txState === "preparing" ? "Checking live market…" : txState === "filled" ? "Call verified" : `Review ${selected} call`}
+                    <button className="primary call-button" onClick={() => requiresLeagueEnrollment ? focusLeagueEnrollment() : void reviewCall()} disabled={checkingLeagueEnrollment || (!requiresLeagueEnrollment && (!quote || loadState !== "ready" || ["preparing", "approval-requested", "approval-submitted", "approval-confirmed", "order-requested", "submitted", "filled"].includes(txState)))}>
+                      {!isConnected
+                        ? "Connect wallet to call it"
+                        : requiresLeagueEnrollment
+                          ? "Join league before calling"
+                          : checkingLeagueEnrollment
+                            ? "Checking league entry…"
+                            : txState === "preparing"
+                              ? "Checking live market…"
+                              : txState === "filled"
+                                ? "Call verified"
+                                : `Review ${selected} call`}
                     </button>
                   )}
 
@@ -652,6 +718,7 @@ export function App() {
             address={address}
             walletClient={walletClient}
             onConnect={connectWallet}
+            onEnrollmentChange={setLeagueEnrollment}
           />
         </Suspense>
 
