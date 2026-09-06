@@ -10,6 +10,7 @@ const repositoryMocks = vi.hoisted(() => ({
   enroll: vi.fn(),
   createChallenge: vi.fn(),
   getChallenge: vi.fn(),
+  acceptChallenge: vi.fn(),
 }));
 
 vi.mock("../../src/social/repository.js", () => ({
@@ -20,6 +21,7 @@ vi.mock("../../src/social/repository.js", () => ({
     enroll = repositoryMocks.enroll;
     createChallenge = repositoryMocks.createChallenge;
     getChallenge = repositoryMocks.getChallenge;
+    acceptChallenge = repositoryMocks.acceptChallenge;
     close() {}
   },
 }));
@@ -34,6 +36,7 @@ describe("social competition panel", () => {
     repositoryMocks.enroll.mockReset().mockResolvedValue(undefined);
     repositoryMocks.createChallenge.mockReset();
     repositoryMocks.getChallenge.mockReset();
+    repositoryMocks.acceptChallenge.mockReset();
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -354,7 +357,75 @@ describe("social competition panel", () => {
     );
 
     expect(await screen.findByText(/no replacement market has been selected/i)).toBeTruthy();
+    expect(screen.getByText(/Challenge expired/i)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Accept with verified wallet/i })).toBeNull();
     expect(onSelectMarket).not.toHaveBeenCalled();
+  });
+
+  it("revalidates the exact Event Contract before accepting a challenge", async () => {
+    const creator = `0x${"1".repeat(40)}` as Address;
+    const invitee = `0x${"2".repeat(40)}` as Address;
+    const marketId = `0x${"3".repeat(64)}`;
+    const challengeId = "11111111-1111-4111-8111-111111111111";
+    const enrolledAt = new Date().toISOString();
+    repositoryMocks.authenticatedWallet.mockResolvedValue(invitee);
+    repositoryMocks.listProfiles.mockResolvedValue([creator, invitee].map((walletAddress, index) => ({
+      id: `${index + 2}2222222-2222-4222-8222-222222222222`,
+      walletAddress,
+      displayName: null,
+      enrolledAt,
+      formulaVersion: "CYS-EDGE-v1" as const,
+      updatedAt: enrolledAt,
+    })));
+    repositoryMocks.getChallenge.mockResolvedValue({
+      id: challengeId,
+      creatorWallet: creator,
+      invitedWallet: invitee,
+      opponentWallet: null,
+      marketId,
+      status: "open",
+      createdAt: enrolledAt,
+      acceptedAt: null,
+      cancelledAt: null,
+    });
+    const refreshRound = vi.fn().mockRejectedValue(new Error("The selected Event Contract is no longer tradable"));
+    const liveRound = {
+      market: {
+        marketId,
+        expirySec: BigInt(Math.floor(Date.now() / 1_000) + 900),
+      },
+      book: { yesAsks: [{ price: 500_000n }], noAsks: [] },
+    };
+
+    render(
+      <SocialPanel
+        config={{
+          supabaseUrl: "https://project.supabase.co",
+          supabasePublishableKey: "sb_publishable_example",
+        }}
+        configError={null}
+        runtime={{
+          refreshRound,
+          loadPublicProfile: vi.fn().mockResolvedValue({
+            evidenceGaps: [],
+            profile: { state: "empty", skillScore: null, settledCount: 0, rounds: [] },
+          }),
+        } as never}
+        route={{ kind: "challenge", challengeId }}
+        rounds={[liveRound as never]}
+        marketDiscoveryState="ready"
+        connected={true}
+        address={invitee}
+        walletClient={{ account: { address: invitee } } as WalletClient}
+        onConnect={async () => null}
+      />,
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "Accept with verified wallet" }));
+
+    expect(refreshRound).toHaveBeenCalledWith(marketId);
+    expect(repositoryMocks.acceptChallenge).not.toHaveBeenCalled();
+    expect(await screen.findByText(/no longer tradable/i)).toBeTruthy();
   });
 
   it("keeps a result link visible when clipboard access is blocked", async () => {

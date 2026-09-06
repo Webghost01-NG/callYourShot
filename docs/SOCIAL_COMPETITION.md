@@ -64,6 +64,31 @@ or pay a prize. Each player independently trades on DreamDEX. A challenge only
 compares the first qualifying filled call for both wallets in the recorded
 market.
 
+### Chain-derived challenge lifecycle
+
+The stored `open`, `accepted`, and `cancelled` values remain coordination state,
+not market truth. The public view derives actionable and terminal states from
+the exact DreamDEX `marketId`:
+
+- an open challenge whose exact market is no longer in the verified live lobby
+  is expired and cannot be accepted in the application;
+- acceptance first refreshes that exact market through the on-chain trading and
+  expiry guard and requires a readable buy side before the database RPC runs;
+- an accepted challenge with both first-call fills waits for settlement and is
+  completed only when both results are terminal;
+- an accepted challenge that closes before both calls exist is labeled locked
+  and incomplete, while preserving any evidence already available;
+- completed comparison uses each call's exact `CYS-EDGE-v1` round points, with
+  void or otherwise unscored outcomes labeled honestly.
+
+Supabase cannot independently query Somnia during its RPC. A caller bypassing
+the application could still change an invited row from `open` to `accepted`,
+but that row never makes a stale market actionable: every public client derives
+the same locked state from DreamDEX, and the trading path performs its own
+on-chain recheck before preparing an order. Enforcing expiry inside persistence
+would require a separately trusted chain-aware server boundary and is outside
+this browser-only MVP.
+
 ## Leaderboard and links
 
 Only profiles with at least ten settled, non-void calls receive a rank.
