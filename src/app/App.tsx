@@ -459,125 +459,180 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#arena">Skip to live arena</a>
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Call Your Shot home">
-          <span className="brand-mark">C</span><span>Call Your Shot</span>
-        </a>
-        <button className="wallet-button" onClick={() => isConnected ? disconnect() : void connectWallet()} disabled={isConnecting}>
-          <span className={isConnected ? "status-dot connected" : "status-dot"} />
-          {isConnecting ? "Connecting…" : shortAddress(address)}
-        </button>
+        <div className="topbar-inner">
+          <a className="brand" href="/" aria-label="Call Your Shot home">
+            <img className="brand-mark" src="/favicon.svg" alt="" width="40" height="40" />
+            <span className="brand-copy"><strong>Call Your Shot</strong><small>Prediction skill league</small></span>
+          </a>
+          <nav className="primary-nav" aria-label="Primary navigation">
+            <a href="#arena">Make a call</a>
+            <a href="#record">Your record</a>
+            <a href="#league">League</a>
+          </nav>
+          <div className="header-actions">
+            <span className="network-badge"><i />Somnia testnet</span>
+            <button className="wallet-button" onClick={() => isConnected ? disconnect() : void connectWallet()} disabled={isConnecting}>
+              <span className={isConnected ? "status-dot connected" : "status-dot"} />
+              {isConnecting ? "Connecting…" : shortAddress(address)}
+            </button>
+          </div>
+        </div>
       </header>
 
       <main>
-        <section className="hero-copy">
-          <p className="eyebrow">Live Event Contracts</p>
-          <h1>Pick a market. Call it. Prove it.</h1>
-          <p>Choose a real DreamDEX event. Your first verified fill becomes your public prediction for that market.</p>
+        <section className="hero">
+          <div className="hero-copy">
+            <p className="eyebrow"><span className="live-dot" />The on-chain prediction league</p>
+            <h1>Call the outcome.<br /><em>Let the chain keep score.</em></h1>
+            <p>Choose a live DreamDEX event, set the most you can lose, and build a public record from real fills—not screenshots or self-reported wins.</p>
+            <div className="hero-actions">
+              <a className="primary-link" href="#arena">Enter the live arena <span aria-hidden="true">↘</span></a>
+              <a className="text-link" href="#record">See how proof works</a>
+            </div>
+            <ul className="trust-list" aria-label="Product guarantees">
+              <li><span>✓</span> Real fills only</li>
+              <li><span>✓</span> Non-custodial</li>
+              <li><span>✓</span> Spend cannot buy rank</li>
+            </ul>
+          </div>
+          <aside className="hero-proof" aria-label="How a prediction becomes verified">
+            <div className="proof-header"><span>Proof pipeline</span><b>LIVE</b></div>
+            <div className="proof-step"><b>01</b><div><strong>You make the call</strong><span>Choose YES or NO and cap your risk.</span></div></div>
+            <div className="proof-line" />
+            <div className="proof-step"><b>02</b><div><strong>DreamDEX fills it</strong><span>The trade—not a button click—creates the receipt.</span></div></div>
+            <div className="proof-line" />
+            <div className="proof-step"><b>03</b><div><strong>Somnia settles it</strong><span>Your result and skill score become independently checkable.</span></div></div>
+            <div className="proof-footer"><span className="proof-seal">✓</span><span><strong>Proof over promises</strong><small>Every counted call links back to chain evidence.</small></span></div>
+          </aside>
         </section>
 
-        {loadState === "loading" && <section className="state-card" aria-live="polite"><span className="spinner" />Finding live Event Contracts…</section>}
-        {(loadState === "error" || loadState === "stale") && (
-          <section className="state-card error" role="alert">
-            <strong>{loadState === "stale" ? "This market just locked" : "Live markets unavailable"}</strong>
-            <span>{loadError}</span>
-            <button onClick={retryMarkets}>Refresh markets</button>
-          </section>
-        )}
-        {rounds.length > 0 && loadState !== "loading" && (
-          <section className="market-lobby" aria-labelledby="market-lobby-title">
-            <div className="market-lobby-heading">
-              <div><p className="eyebrow">Market lobby</p><h2 id="market-lobby-title">What do you want to call?</h2></div>
-              <button className="secondary" onClick={() => void loadMarkets()} disabled={automaticRefreshBlocked}>Refresh markets</button>
-            </div>
-            <div className="market-list">
-              {rounds.map((item) => {
-                const selectedMarket = item.market.marketId.toLowerCase() === round?.market.marketId.toLowerCase();
-                const liquid = hasBuyLiquidity(item);
-                return <button
-                  key={item.market.marketId}
-                  type="button"
-                  className={selectedMarket ? "market-option selected" : "market-option"}
-                  aria-pressed={selectedMarket}
-                  onClick={() => selectMarket(item.market.marketId)}
-                  disabled={transactionInFlight}
-                >
-                  <span><b>{item.market.indexed.asset || "Event"}</b><small>{cadenceLabel(item.market.indexed.intervalSec)}</small></span>
-                  <strong>{item.market.indexed.question}</strong>
-                  <small>{liquid ? `${countdown(item.market.expirySec, now)} left` : "No sell orders"}</small>
-                </button>;
-              })}
-            </div>
-            {marketNotice && <p className="market-notice">{marketNotice}</p>}
-          </section>
-        )}
-        {loadState === "empty" && (
-          <section className="state-card" role="status">
-            <strong>No trade is available right now</strong>
-            <span>The selected market has no sell orders for either side. Choose another event or refresh; nothing has been estimated or fabricated.</span>
-            <button onClick={() => void loadMarkets()}>Refresh live books</button>
-          </section>
-        )}
+        <section className="arena-section" id="arena" aria-labelledby="arena-title">
+          <div className="section-intro">
+            <span className="section-index">01</span>
+            <div><p className="eyebrow">Live arena</p><h2 id="arena-title">Make one call that can be proven.</h2><p>Pick an active event, choose a side, and know your maximum loss before your wallet opens.</p></div>
+          </div>
 
-        {round && (loadState === "ready" || loadState === "empty") && (
-          <section className="round-card">
-            <div className="round-meta">
-              <div><span>Selected market</span><strong>{round.market.indexed.asset || "Event"} · {cadenceLabel(round.market.indexed.intervalSec)}</strong></div>
-              <div><span>Time left</span><strong className="timer">{countdown(round.market.expirySec, now)}</strong></div>
-            </div>
-            <div className="reference">
-              <span>Event question</span>
-              <strong>{round.market.indexed.question}</strong>
-              <small>Choose YES or NO before the market locks.</small>
-            </div>
-
-            <fieldset className="direction-picker" disabled={loadState !== "ready" || txState === "filled"}>
-              <legend>What’s your call?</legend>
-              <button type="button" aria-pressed={selected === "UP"} className={selected === "UP" ? "direction up selected" : "direction up"} onClick={() => { setSelected("UP"); setTxState("idle"); }}>
-                <span className="arrow">↗</span><span><strong>{labels.up}</strong><small>{labels.upDetail}</small></span>
-                <b>{selected === "UP" ? probability : round.book.yesAsks[0] ? `${formatUnits(round.book.yesAsks[0].price * 100n, decimals, 0)}%` : "—"}</b>
-              </button>
-              <button type="button" aria-pressed={selected === "DOWN"} className={selected === "DOWN" ? "direction down selected" : "direction down"} onClick={() => { setSelected("DOWN"); setTxState("idle"); }}>
-                <span className="arrow">↘</span><span><strong>{labels.down}</strong><small>{labels.downDetail}</small></span>
-                <b>{selected === "DOWN" ? probability : round.book.noAsks[0] ? `${formatUnits(round.book.noAsks[0].price * 100n, decimals, 0)}%` : "—"}</b>
-              </button>
-            </fieldset>
-
-            <label className="stake-field">
-              <span>Your maximum loss</span>
-              <div><input inputMode="decimal" value={stake} onChange={(event) => { setStake(event.target.value); setTxState("idle"); }} aria-describedby={quoteResult.error ? "stake-help quote-error" : "stake-help"} aria-invalid={Boolean(quoteResult.error)} /><b>{collateralLabel}</b></div>
-              <small id="stake-help">You cannot lose more than this amount.</small>
-              {quoteResult.error && <small id="quote-error" className="quote-error" role="status">{quoteResult.error}</small>}
-            </label>
-
-            <div className="receipt-preview">
-              <div><span>Current market price</span><strong>{probability}</strong></div>
-              <div><span>Maximum loss</span><strong>{quote ? `${formatUnits(quote.maximumCost, decimals)} ${collateralLabel}` : "—"}</strong></div>
-              <div><span>Possible payout</span><strong>{quote ? `${formatUnits(quote.possiblePayout, decimals)} ${collateralLabel}` : "—"}</strong></div>
-            </div>
-
-            {txState === "review" && plan ? (
-              <div className="review-panel" role="group" aria-labelledby="review-title">
-                <p className="eyebrow">Review before signing</p>
-                <h2 id="review-title">{plan.side === "BUY_YES" ? labels.up : labels.down} with a maximum loss of {formatUnits(plan.maximumCost, decimals)} {collateralLabel}</h2>
-                <p>{plan.approval ? "Your wallet will request a bounded token approval, then the trade." : "Your wallet will request the trade."} The call counts only after a real fill is verified. Price protection: {formatUnits(plan.selectedLimitPrice * 100n, decimals, 1)}% maximum.</p>
-                <div className="review-actions"><button className="secondary" onClick={() => setTxState("idle")}>Go back</button><button className="primary" onClick={() => void confirmCall()}>Confirm in wallet</button></div>
+          {loadState === "loading" && <section className="state-card loading-state" aria-live="polite"><span className="scanner"><i /></span><div><strong>Finding live Event Contracts…</strong><span>Checking the indexer, on-chain bindings, and real order books.</span></div></section>}
+          {(loadState === "error" || loadState === "stale") && (
+            <section className="state-card error" role="alert">
+              <span className="state-icon" aria-hidden="true">!</span>
+              <div><strong>{loadState === "stale" ? "This market just locked" : "Live markets unavailable"}</strong><span>{loadError}</span></div>
+              <button onClick={retryMarkets}>Refresh markets</button>
+            </section>
+          )}
+          {rounds.length > 0 && loadState !== "loading" && (
+            <section className="market-lobby" aria-labelledby="market-lobby-title">
+              <div className="market-lobby-heading">
+                <div><span className="micro-label">Choose an event</span><h3 id="market-lobby-title">Live now</h3></div>
+                <button className="secondary compact" onClick={() => void loadMarkets()} disabled={automaticRefreshBlocked}>Refresh markets</button>
               </div>
-            ) : (
-              <button className="primary call-button" onClick={() => void reviewCall()} disabled={!quote || loadState !== "ready" || ["preparing", "approval-requested", "approval-submitted", "approval-confirmed", "order-requested", "submitted", "filled"].includes(txState)}>
-                {!isConnected ? "Connect wallet to call it" : txState === "preparing" ? "Checking live market…" : txState === "filled" ? "Call verified" : `Review ${selected} call`}
-              </button>
-            )}
+              <div className="market-list">
+                {rounds.map((item) => {
+                  const selectedMarket = item.market.marketId.toLowerCase() === round?.market.marketId.toLowerCase();
+                  const liquid = hasBuyLiquidity(item);
+                  return <button
+                    key={item.market.marketId}
+                    type="button"
+                    className={selectedMarket ? "market-option selected" : "market-option"}
+                    aria-pressed={selectedMarket}
+                    onClick={() => selectMarket(item.market.marketId)}
+                    disabled={transactionInFlight}
+                  >
+                    <span className="market-option-top"><b>{item.market.indexed.asset || "Event"}</b><small>{cadenceLabel(item.market.indexed.intervalSec)}</small></span>
+                    <strong>{item.market.indexed.question}</strong>
+                    <span className="market-option-bottom"><small className={liquid ? "market-live" : ""}>{liquid ? `${countdown(item.market.expirySec, now)} left` : "No sell orders"}</small><i aria-hidden="true">→</i></span>
+                  </button>;
+                })}
+              </div>
+              {marketNotice && <p className="market-notice">{marketNotice}</p>}
+            </section>
+          )}
+          {loadState === "empty" && (
+            <section className="state-card" role="status">
+              <span className="state-icon quiet" aria-hidden="true">○</span>
+              <div><strong>No trade is available right now</strong><span>The selected market has no sell orders for either side. Choose another event or refresh; nothing has been estimated or fabricated.</span></div>
+              <button onClick={() => void loadMarkets()}>Refresh live books</button>
+            </section>
+          )}
 
-            {txState === "approval-requested" && <p className="tx-status" aria-live="polite"><span className="spinner" />Confirm the bounded {collateralLabel} approval in your wallet. Nothing has been submitted yet.</p>}
-            {txState === "approval-submitted" && <p className="tx-status" aria-live="polite"><span className="spinner" />Approval submitted. Waiting for confirmation… <a href={explorerTransaction(approvalHash)} target="_blank" rel="noreferrer">View approval ↗</a></p>}
-            {txState === "approval-confirmed" && <p className="tx-status" aria-live="polite"><span className="spinner" />Bounded approval confirmed. Checking the live DreamDEX order… <a href={explorerTransaction(approvalHash)} target="_blank" rel="noreferrer">View approval ↗</a></p>}
-            {txState === "order-requested" && <p className="tx-status" aria-live="polite"><span className="spinner" />{approvalConfirmed ? "Approval confirmed. Now confirm the DreamDEX order in your wallet." : "Confirm the DreamDEX order in your wallet. Nothing has been submitted yet."}</p>}
-            {txState === "submitted" && <p className="tx-status" aria-live="polite"><span className="spinner" />Submitted to Somnia. Waiting for a verified fill… <code>{shortAddress(txHash)}</code></p>}
-            {txState === "filled" && execution && plan && <div className="verified-receipt" role="status"><span>✓</span><div><strong>Your {plan.side === "BUY_YES" ? labels.up : labels.down} call is verified</strong><small>{formatUnits(execution.totalQuantity, decimals)} contracts filled at an average {formatUnits(selectedOutcomePrice(plan.side, execution.averageFillPrice, plan.market.constraints.priceScale) * 100n, decimals, 0)}% price.</small><code>{shortAddress(execution.transactionHash)}</code></div></div>}
-            {(["unfilled", "rejected", "failed"] as TxState[]).includes(txState) && <div className="tx-error" role="alert"><strong>{txState === "unfilled" ? "Order mined, but not filled" : txState === "rejected" ? approvalConfirmed ? "Order cancelled" : plan?.approval ? "Approval cancelled" : "Order cancelled" : txHash ? "Verification interrupted" : "Call not placed"}</strong><span>{txError}</span>{(approvalHash || txHash) && <div className="tx-proof-links">{approvalHash && <a href={explorerTransaction(approvalHash)} target="_blank" rel="noreferrer">View approval transaction ↗</a>}{txHash && <a href={explorerTransaction(txHash)} target="_blank" rel="noreferrer">View order transaction ↗</a>}</div>}<button onClick={() => setTxState("idle")}>{txHash ? "Return to live market" : "Try again safely"}</button></div>}
-          </section>
-        )}
+          {round && (loadState === "ready" || loadState === "empty") && (
+            <section className="round-card">
+              <div className="round-meta">
+                <div><span>Selected event</span><strong>{round.market.indexed.asset || "Event"} · {cadenceLabel(round.market.indexed.intervalSec)}</strong></div>
+                <div><span>Market closes in</span><strong className="timer">{countdown(round.market.expirySec, now)}</strong></div>
+              </div>
+              <div className="round-workspace">
+                <div className="outcome-panel">
+                  <div className="reference">
+                    <span>Event question</span>
+                    <strong>{round.market.indexed.question}</strong>
+                    <small>Your first filled YES or NO order becomes your public call.</small>
+                  </div>
+
+                  <fieldset className="direction-picker" disabled={loadState !== "ready" || txState === "filled"}>
+                    <legend>Which outcome are you calling?</legend>
+                    <button type="button" aria-pressed={selected === "UP"} className={selected === "UP" ? "direction up selected" : "direction up"} onClick={() => { setSelected("UP"); setTxState("idle"); }}>
+                      <span className="arrow">↗</span><span><strong>{labels.up}</strong><small>{labels.upDetail}</small></span>
+                      <b>{selected === "UP" ? probability : round.book.yesAsks[0] ? `${formatUnits(round.book.yesAsks[0].price * 100n, decimals, 0)}%` : "—"}</b>
+                    </button>
+                    <button type="button" aria-pressed={selected === "DOWN"} className={selected === "DOWN" ? "direction down selected" : "direction down"} onClick={() => { setSelected("DOWN"); setTxState("idle"); }}>
+                      <span className="arrow">↘</span><span><strong>{labels.down}</strong><small>{labels.downDetail}</small></span>
+                      <b>{selected === "DOWN" ? probability : round.book.noAsks[0] ? `${formatUnits(round.book.noAsks[0].price * 100n, decimals, 0)}%` : "—"}</b>
+                    </button>
+                  </fieldset>
+                </div>
+
+                <div className="ticket-panel">
+                  <div className="ticket-heading"><span>02</span><div><small>Build your ticket</small><strong>Set the risk. Review the proof.</strong></div></div>
+                  <label className="stake-field">
+                    <span>Your maximum loss</span>
+                    <div><input inputMode="decimal" value={stake} onChange={(event) => { setStake(event.target.value); setTxState("idle"); }} aria-describedby={quoteResult.error ? "stake-help quote-error" : "stake-help"} aria-invalid={Boolean(quoteResult.error)} /><b>{collateralLabel}</b></div>
+                    <small id="stake-help">This is the most the call can cost—not a suggested spend.</small>
+                    {quoteResult.error && <small id="quote-error" className="quote-error" role="status">{quoteResult.error}</small>}
+                  </label>
+
+                  <div className="receipt-preview">
+                    <div><span>Market price</span><strong>{probability}</strong></div>
+                    <div><span>Maximum loss</span><strong>{quote ? `${formatUnits(quote.maximumCost, decimals)} ${collateralLabel}` : "—"}</strong></div>
+                    <div><span>Possible payout</span><strong>{quote ? `${formatUnits(quote.possiblePayout, decimals)} ${collateralLabel}` : "—"}</strong></div>
+                  </div>
+
+                  {txState === "review" && plan ? (
+                    <div className="review-panel" role="group" aria-labelledby="review-title">
+                      <p className="eyebrow">Review before signing</p>
+                      <h2 id="review-title">{plan.side === "BUY_YES" ? labels.up : labels.down} with a maximum loss of {formatUnits(plan.maximumCost, decimals)} {collateralLabel}</h2>
+                      <p>{plan.approval ? "Your wallet will request a bounded token approval, then the trade." : "Your wallet will request the trade."} The call counts only after a real fill is verified. Price protection: {formatUnits(plan.selectedLimitPrice * 100n, decimals, 1)}% maximum.</p>
+                      <div className="review-actions"><button className="secondary" onClick={() => setTxState("idle")}>Go back</button><button className="primary" onClick={() => void confirmCall()}>Confirm in wallet</button></div>
+                    </div>
+                  ) : (
+                    <button className="primary call-button" onClick={() => void reviewCall()} disabled={!quote || loadState !== "ready" || ["preparing", "approval-requested", "approval-submitted", "approval-confirmed", "order-requested", "submitted", "filled"].includes(txState)}>
+                      {!isConnected ? "Connect wallet to call it" : txState === "preparing" ? "Checking live market…" : txState === "filled" ? "Call verified" : `Review ${selected} call`}
+                    </button>
+                  )}
+
+                  {txState === "approval-requested" && <p className="tx-status" aria-live="polite"><span className="spinner" />Confirm the bounded {collateralLabel} approval in your wallet. Nothing has been submitted yet.</p>}
+                  {txState === "approval-submitted" && <p className="tx-status" aria-live="polite"><span className="spinner" />Approval submitted. Waiting for confirmation… <a href={explorerTransaction(approvalHash)} target="_blank" rel="noreferrer">View approval ↗</a></p>}
+                  {txState === "approval-confirmed" && <p className="tx-status" aria-live="polite"><span className="spinner" />Bounded approval confirmed. Checking the live DreamDEX order… <a href={explorerTransaction(approvalHash)} target="_blank" rel="noreferrer">View approval ↗</a></p>}
+                  {txState === "order-requested" && <p className="tx-status" aria-live="polite"><span className="spinner" />{approvalConfirmed ? "Approval confirmed. Now confirm the DreamDEX order in your wallet." : "Confirm the DreamDEX order in your wallet. Nothing has been submitted yet."}</p>}
+                  {txState === "submitted" && <p className="tx-status" aria-live="polite"><span className="spinner" />Submitted to Somnia. Waiting for a verified fill… <code>{shortAddress(txHash)}</code></p>}
+                  {txState === "filled" && execution && plan && <div className="verified-receipt" role="status"><span>✓</span><div><strong>Your {plan.side === "BUY_YES" ? labels.up : labels.down} call is verified</strong><small>{formatUnits(execution.totalQuantity, decimals)} contracts filled at an average {formatUnits(selectedOutcomePrice(plan.side, execution.averageFillPrice, plan.market.constraints.priceScale) * 100n, decimals, 0)}% price.</small><code>{shortAddress(execution.transactionHash)}</code></div></div>}
+                  {(["unfilled", "rejected", "failed"] as TxState[]).includes(txState) && <div className="tx-error" role="alert"><strong>{txState === "unfilled" ? "Order mined, but not filled" : txState === "rejected" ? approvalConfirmed ? "Order cancelled" : plan?.approval ? "Approval cancelled" : "Order cancelled" : txHash ? "Verification interrupted" : "Call not placed"}</strong><span>{txError}</span>{(approvalHash || txHash) && <div className="tx-proof-links">{approvalHash && <a href={explorerTransaction(approvalHash)} target="_blank" rel="noreferrer">View approval transaction ↗</a>}{txHash && <a href={explorerTransaction(txHash)} target="_blank" rel="noreferrer">View order transaction ↗</a>}</div>}<button onClick={() => setTxState("idle")}>{txHash ? "Return to live market" : "Try again safely"}</button></div>}
+                </div>
+              </div>
+            </section>
+          )}
+        </section>
+
+        <section className="proof-system" aria-labelledby="proof-system-title">
+          <div><p className="eyebrow">What gets counted</p><h2 id="proof-system-title">A scoreboard that cannot be bought.</h2></div>
+          <div className="proof-system-grid">
+            <article><span>01</span><strong>One market, one call</strong><p>Your first verified buy locks the prediction. Editing the story later is impossible.</p></article>
+            <article><span>02</span><strong>Outcome from settlement</strong><p>Results come from the finalized Event Contract—not from our database.</p></article>
+            <article><span>03</span><strong>Every call weighs the same</strong><p>Better decisions improve rank. A larger wallet does not.</p></article>
+          </div>
+        </section>
 
         <ProfilePanel
           connected={isConnected}
@@ -587,7 +642,7 @@ export function App() {
           onRefresh={() => void loadProfile()}
         />
 
-        <Suspense fallback={<section className="social-section"><div className="profile-empty"><span><i className="spinner" />Loading the skill league…</span></div></section>}>
+        <Suspense fallback={<section className="social-section" id="league"><div className="profile-empty"><span><i className="spinner" />Loading the skill league…</span></div></section>}>
           <SocialPanel
             config={socialConfigResult.config}
             configError={socialConfigResult.error}
@@ -600,9 +655,8 @@ export function App() {
           />
         </Suspense>
 
-        <section className="how-it-works"><p className="eyebrow">Simple on top. Verifiable underneath.</p><div><article><b>01</b><strong>Pick a side</strong><span>YES or NO. No charts required.</span></article><article><b>02</b><strong>Set your limit</strong><span>Your maximum loss is clear before signing.</span></article><article><b>03</b><strong>Prove your instinct</strong><span>Only a real DreamDEX fill becomes a call.</span></article></div></section>
       </main>
-      <footer><span>Powered by DreamDEX Event Contracts on Somnia</span><span>Not financial advice · Testnet</span></footer>
+      <footer><div><img src="/favicon.svg" alt="" width="28" height="28" /><strong>Call Your Shot</strong></div><span>Powered by DreamDEX Event Contracts on Somnia</span><span>Testnet product · Not financial advice</span></footer>
     </div>
   );
 }

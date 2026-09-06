@@ -45,8 +45,9 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
       : "No settled calls yet";
 
   return (
-    <section className="profile-section" aria-labelledby="profile-title">
+    <section className="profile-section" id="record" aria-labelledby="profile-title">
       <div className="section-heading">
+        <span className="section-index">02</span>
         <div>
           <p className="eyebrow">Your public track record</p>
           <h2 id="profile-title">Skill, backed by receipts.</h2>
