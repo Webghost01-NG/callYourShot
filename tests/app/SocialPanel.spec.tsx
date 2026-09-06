@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Address, WalletClient } from "viem";
+import type { Address, Hex, WalletClient } from "viem";
 
 const repositoryMocks = vi.hoisted(() => ({
   authenticatedWallet: vi.fn(),
@@ -59,6 +59,59 @@ describe("social competition panel", () => {
     );
     expect(screen.getByText("Social league is not configured")).toBeTruthy();
     expect(screen.getByText(/No sample players are shown/)).toBeTruthy();
+  });
+
+  it("rebuilds a settled receipt directly from DreamDEX without Supabase or live liquidity", async () => {
+    const address = `0x${"1".repeat(40)}` as Address;
+    const marketId = `0x${"3".repeat(64)}` as Hex;
+    const fillHash = `0x${"4".repeat(64)}` as Hex;
+    const finalizationHash = `0x${"5".repeat(64)}` as Hex;
+    const loadPublicProfile = vi.fn().mockResolvedValue({
+      evidenceGaps: [],
+      profile: {
+        state: "provisional",
+        skillScore: { numerator: 236n, denominator: 5n },
+        settledCount: 1,
+        rounds: [{
+          marketId,
+          question: "Does this event settle YES?",
+          side: "UP",
+          fillTransactionHash: fillHash,
+          settlementTransactionHash: finalizationHash,
+          oracleTransactionHash: null,
+          timestampSec: 1n,
+          quantity: 1_000_000n,
+          weightedPriceNumerator: 56_000_000_000n,
+          confidence: { numerator: 7n, denominator: 125n },
+          state: "lost",
+          roundPoints: { numerator: -28n, denominator: 5n },
+          entryCostRaw: 56_000n,
+          payoutRaw: 0n,
+          returnRaw: -56_000n,
+        }],
+      },
+    });
+
+    render(
+      <SocialPanel
+        config={null}
+        configError="Social persistence is unavailable."
+        runtime={{ loadPublicProfile } as never}
+        route={{ kind: "receipt", wallet: address, marketId }}
+        rounds={[]}
+        marketDiscoveryState="empty"
+        connected={false}
+        onConnect={async () => null}
+      />,
+    );
+
+    expect(await screen.findByText("5.60%")).toBeTruthy();
+    expect(screen.getByText("-5.60")).toBeTruthy();
+    expect(screen.getByText("47.20")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Verify fill/i }).getAttribute("href")).toContain(fillHash);
+    expect(screen.getByRole("link", { name: /Verify finalization/i }).getAttribute("href")).toContain(finalizationHash);
+    expect(screen.getByText(/does not depend on Supabase/i)).toBeTruthy();
+    expect(loadPublicProfile).toHaveBeenCalledWith(address);
   });
 
   it("continues from wallet connection through sign-in and enrollment in one action", async () => {

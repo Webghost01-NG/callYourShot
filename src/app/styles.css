@@ -450,6 +450,14 @@ code { color: var(--muted); font: 400 10px "DM Mono", monospace; }
 .share-result { display: inline-block; margin: 10px 0 0; color: var(--muted); text-transform: uppercase; }
 .share-result.won { color: var(--up); }
 .share-result.lost { color: var(--down); }
+.receipt-proof-grid { margin: 18px 0 13px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.receipt-proof-grid > div { min-height: 74px; padding: 13px; display: grid; align-content: space-between; gap: 8px; border: 1px solid rgba(52, 62, 62, .55); border-radius: 11px; background: #090d10; }
+.receipt-proof-grid span { color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.receipt-proof-grid strong { font: 500 14px "DM Mono", monospace; text-transform: capitalize; overflow-wrap: anywhere; }
+.receipt-market-id { display: grid; gap: 4px; }
+.receipt-market-id span { color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.receipt-market-id code { color: var(--muted-bright); overflow-wrap: anywhere; }
+.receipt-formula { max-width: 760px; padding: 11px 13px; border-left: 2px solid var(--lime); background: rgba(186, 255, 60, .04); }
 .challenge-sides { margin: 14px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .challenge-sides > div { padding: 14px; display: grid; gap: 7px; border-radius: 11px; background: #090d10; }
 .challenge-sides a { color: var(--lime); font-size: 10px; }
@@ -520,6 +528,7 @@ footer div { display: flex; align-items: center; gap: 10px; color: var(--ink); }
   .profile-card { grid-template-columns: 1fr; }
   .profile-score { border-right: 0; border-bottom: 1px solid var(--line); }
   .profile-metrics { grid-template-columns: 1fr 1fr; padding: 14px; }
+  .receipt-proof-grid { grid-template-columns: 1fr 1fr; }
   .history-row { grid-template-columns: auto 1fr; align-items: start; }
   .history-result { grid-column: 2; text-align: left; }
   .league-grid { grid-template-columns: 1fr; }

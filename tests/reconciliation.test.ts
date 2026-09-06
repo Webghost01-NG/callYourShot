@@ -85,7 +85,7 @@ function client(rows: IndexedProfileFill[], overrides: Partial<ProfileEvidenceCl
     getBinaryMarket: async () => indexedMarket(),
     getMarketOnchain: async () => onchain(),
     getMarketResolution: async () => ({ events: [], closingAnswer: { txHash: oracleHash } }),
-    getMarketStatusHistory: async () => [{ newStatus: "Finalized", txHash: settlementHash }],
+    getMarketStatusHistory: async () => [{ newStatus: "Finalized", blockNumber: "900", txHash: settlementHash }],
     ...overrides,
   };
 }
@@ -97,7 +97,7 @@ const criteria = {
 };
 
 test("rebuilds a scored profile from fill, settlement, and oracle evidence", async () => {
-  const reconciler = new DreamDexProfileReconciler(client([fill()]), async () => settlement(), () => 1_000n);
+  const reconciler = new DreamDexProfileReconciler(client([fill()]), async () => settlement(), undefined, () => 1_000n);
   const result = await reconciler.reconcile(account, criteria);
   assert.equal(result.snapshotTimestampSec, 1_000n);
   assert.equal(result.profile.settledCount, 1);
@@ -146,6 +146,30 @@ test("keeps chain-verified scores while reporting a missing oracle link", async 
   assert.equal(result.profile.settledCount, 1);
   assert.equal(result.profile.rounds[0]!.oracleTransactionHash, null);
   assert.equal(result.evidenceGaps[0]?.kind, "oracle");
+});
+
+test("finds the module finalization event when the indexer reports only Resolved", async () => {
+  const finalizationHash = `0x${"9".repeat(64)}` as Hex;
+  const source = client([fill()], {
+    getMarketStatusHistory: async () => [{
+      newStatus: "Resolved",
+      blockNumber: "321",
+      txHash: settlementHash,
+    }],
+  });
+  const reads: Array<{ marketId: Hex; blockNumber: bigint }> = [];
+  const result = await new DreamDexProfileReconciler(
+    source,
+    async () => settlement(),
+    async (id, blockNumber) => {
+      reads.push({ marketId: id, blockNumber });
+      return finalizationHash;
+    },
+  ).reconcile(account, criteria);
+
+  assert.deepEqual(reads, [{ marketId, blockNumber: 321n }]);
+  assert.equal(result.profile.rounds[0]!.settlementTransactionHash, finalizationHash);
+  assert.equal(result.evidenceGaps.some((gap) => gap.kind === "finalization"), false);
 });
 
 test("shows an unfinalized filled round without reading permanent settlement", async () => {

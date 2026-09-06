@@ -3,7 +3,14 @@ import {
   SomniaMarkets,
 } from "@somnia-chain/markets-sdk";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
-import { createWalletClient, http, type Address, type Hex } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  parseAbiItem,
+  type Address,
+  type Hex,
+} from "viem";
 import { DreamDexProfileReconciler } from "../src/dreamdex/reconciliation.js";
 import { flushOutputAndExit } from "./flush-output.js";
 
@@ -36,6 +43,10 @@ const walletClient = createWalletClient({
   chain: somniaShannon,
   transport: http(rpcUrl),
 });
+const publicClient = createPublicClient({ chain: somniaShannon, transport: http(rpcUrl) });
+const marketFinalizedEvent = parseAbiItem(
+  "event MarketFinalized(bytes32 indexed marketId, address indexed pool, uint256 marketKey)",
+);
 const trader = exchange.client.createTrader({ walletClient, account: account as Address });
 const reconciler = new DreamDexProfileReconciler(
   exchange.client,
@@ -43,6 +54,18 @@ const reconciler = new DreamDexProfileReconciler(
     const settlement = await trader.getSettlement(marketId);
     if (!settlement) throw new Error("permanent settlement record was not found");
     return settlement;
+  },
+  async (marketId, blockNumber) => {
+    const module = SOMNIA_TESTNET_ADDRESSES.binaryModule;
+    if (!module) return null;
+    const logs = await publicClient.getLogs({
+      address: module,
+      event: marketFinalizedEvent,
+      args: { marketId },
+      fromBlock: blockNumber,
+      toBlock: blockNumber,
+    });
+    return logs[0]?.transactionHash ?? null;
   },
 );
 

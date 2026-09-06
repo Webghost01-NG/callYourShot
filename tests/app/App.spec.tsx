@@ -7,6 +7,7 @@ import type { LiveRound } from "../../src/app/runtime.js";
 const runtimeMocks = vi.hoisted(() => ({
   constructed: vi.fn(),
   loadMarkets: vi.fn(),
+  loadPublicProfile: vi.fn(),
   refreshRound: vi.fn(),
   close: vi.fn(),
 }));
@@ -25,6 +26,7 @@ vi.mock("../../src/app/runtime.js", () => ({
       runtimeMocks.constructed();
     }
     loadMarkets = runtimeMocks.loadMarkets;
+    loadPublicProfile = runtimeMocks.loadPublicProfile;
     refreshRound = runtimeMocks.refreshRound;
     close = runtimeMocks.close;
   },
@@ -75,6 +77,10 @@ describe("live round resilience", () => {
     vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "");
     runtimeMocks.constructed.mockReset();
     runtimeMocks.loadMarkets.mockReset();
+    runtimeMocks.loadPublicProfile.mockReset().mockResolvedValue({
+      evidenceGaps: [],
+      profile: { state: "empty", skillScore: null, settledCount: 0, rounds: [] },
+    });
     runtimeMocks.refreshRound.mockReset();
     runtimeMocks.close.mockReset();
   });

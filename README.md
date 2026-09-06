@@ -115,6 +115,7 @@ See [the persistence, authentication, RLS, privacy, and abuse design](docs/SOCIA
 
 ## Hackathon evidence
 
+- [Genuine settled judge receipt](https://call-your-shot-six.vercel.app/?receiptWallet=0x6CeD8D6Bad8Dfd2e60BCEA116fE74548f959f1F2&receiptMarket=0x00000000000000000000000000000000000000000000000000000000000127a9) — rebuilt at runtime from the public DreamDEX fill and finalized Event Contract; it does not require a connected wallet, Supabase, or a currently liquid market
 - [DreamDEX integration and transaction evidence](docs/DREAMDEX_VALIDATION.md)
 - [Multi-market live discovery evidence](docs/MULTI_MARKET_VALIDATION.md)
 - [SDK and documentation feedback](docs/DREAMDEX_FEEDBACK.md)

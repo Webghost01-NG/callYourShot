@@ -221,10 +221,6 @@ export function SocialPanel({
         setChallengeError("Challenge verification is unavailable because the public league could not be loaded.");
         setChallengeState("error");
       }
-      if (route.kind === "receipt") {
-        setReceiptError("Result verification is unavailable because the public league could not be loaded.");
-        setReceiptState("error");
-      }
       return;
     }
     if (!profilesLoaded) return;
@@ -266,35 +262,34 @@ export function SocialPanel({
         }
       });
     }
-    if (route.kind === "receipt") {
-      setReceiptRound(undefined);
-      setReceiptError(undefined);
-      setReceiptState("loading");
-      const enrollment = enrollmentByWallet.get(route.wallet.toLowerCase());
-      if (!enrollment) {
-        setReceiptState("not-found");
-      } else {
-        void runtime.loadPublicProfile(route.wallet, enrollmentStart(enrollment))
-          .then((profile) => {
-            if (!active) return;
-            const found = findRound(profile, route.marketId);
-            if (!found) {
-              setReceiptState("not-found");
-              return;
-            }
-            setReceiptRound(found);
-            setReceiptState("ready");
-          })
-          .catch((cause) => {
-            if (active) {
-              setReceiptError(errorMessage(cause));
-              setReceiptState("error");
-            }
-          });
-      }
-    }
     return () => { active = false; };
   }, [enrollmentByWallet, profilesLoaded, repository, route, runtime, state]);
+
+  useEffect(() => {
+    if (!runtime || route.kind !== "receipt") return;
+    let active = true;
+    setReceiptRound(undefined);
+    setReceiptError(undefined);
+    setReceiptState("loading");
+    void runtime.loadPublicProfile(route.wallet)
+      .then((profile) => {
+        if (!active) return;
+        const found = findRound(profile, route.marketId);
+        if (!found) {
+          setReceiptState("not-found");
+          return;
+        }
+        setReceiptRound(found);
+        setReceiptState("ready");
+      })
+      .catch((cause) => {
+        if (active) {
+          setReceiptError(errorMessage(cause));
+          setReceiptState("error");
+        }
+      });
+    return () => { active = false; };
+  }, [route, runtime]);
 
   async function ensureLeagueIdentity(): Promise<Address> {
     let expectedAddress = address;
@@ -461,11 +456,21 @@ export function SocialPanel({
     if (challengedRound && onSelectMarket) onSelectMarket(challengedRound.market.marketId);
   }, [challengedRound, onSelectMarket]);
 
+  const receiptCard = route.kind === "receipt" ? (
+    <SharedReceiptCard
+      wallet={route.wallet}
+      state={receiptState}
+      round={receiptRound}
+      error={receiptError}
+    />
+  ) : null;
+
   if (!config) {
     return (
       <section className={sharedRoute ? "social-section shared-route-section" : "social-section"} id="league" aria-labelledby="league-title">
         <div className="section-heading"><span className="section-index">03</span><div><p className="eyebrow">{heading.eyebrow}</p><h2 id="league-title">{heading.title}</h2><p>{heading.description}</p></div></div>
-        <div className="profile-empty"><strong>{sharedRoute ? "This shared proof cannot be loaded" : "Social league is not configured"}</strong><span>{configError ?? "Add the public Supabase URL and publishable key to enable real enrollments. No sample players are shown."}</span></div>
+        {receiptCard ?? <div className="profile-empty"><strong>{sharedRoute ? "This shared proof cannot be loaded" : "Social league is not configured"}</strong><span>{configError ?? "Add the public Supabase URL and publishable key to enable real enrollments. No sample players are shown."}</span></div>}
+        {route.kind === "receipt" && <p className="formula-note">The social league is unavailable, but this public receipt is reconstructed directly from DreamDEX and does not depend on Supabase.</p>}
       </section>
     );
   }
@@ -478,15 +483,7 @@ export function SocialPanel({
         <button className="secondary refresh-profile" onClick={() => void loadBoard()} disabled={state === "loading"}>Refresh board</button>
       </div>
 
-      {route.kind === "receipt" && (
-        <article className="share-card">
-          <p className="eyebrow">Shared result receipt</p>
-          {receiptState === "loading" && <span aria-live="polite">Rebuilding this claim from DreamDEX…</span>}
-          {receiptState === "not-found" && <span role="status">No verified result was found for this wallet and Event Contract.</span>}
-          {receiptState === "error" && <span role="alert">{receiptError ?? "This result could not be verified."}</span>}
-          {receiptState === "ready" && receiptRound && <><h3>{shortAddress(route.wallet)} called {callLabel(receiptRound.question, receiptRound.side)}</h3><strong className={`share-result ${receiptRound.state}`}>{receiptRound.state}</strong><p>{receiptRound.question}</p><div className="proof-links"><a href={explorerTransaction(receiptRound.fillTransactionHash)} target="_blank" rel="noreferrer">Verify fill ↗</a>{receiptRound.settlementTransactionHash && <a href={explorerTransaction(receiptRound.settlementTransactionHash)} target="_blank" rel="noreferrer">Verify result ↗</a>}</div></>}
-        </article>
-      )}
+      {receiptCard}
 
       {route.kind === "challenge" && (
         <article className="share-card">
@@ -528,6 +525,60 @@ export function SocialPanel({
         </aside>
       </div>
     </section>
+  );
+}
+
+function SharedReceiptCard({
+  wallet,
+  state,
+  round,
+  error,
+}: {
+  wallet: Address;
+  state: SharedLoadState;
+  round?: ProfileRound;
+  error?: string;
+}) {
+  const points = round?.roundPoints ? formatRational(round.roundPoints, 2) : null;
+  const confidence = round
+    ? formatRational({
+        numerator: round.confidence.numerator * 100n,
+        denominator: round.confidence.denominator,
+      }, 2)
+    : null;
+  const oneCallScore = round?.roundPoints
+    ? formatRational({
+        numerator: 100n * round.roundPoints.denominator + round.roundPoints.numerator,
+        denominator: 2n * round.roundPoints.denominator,
+      }, 2)
+    : null;
+  return (
+    <article className="share-card receipt-card">
+      <p className="eyebrow">Shared result receipt</p>
+      {state === "loading" && <span aria-live="polite">Rebuilding this claim from DreamDEX…</span>}
+      {state === "not-found" && <span role="status">No verified result was found for this wallet and Event Contract.</span>}
+      {state === "error" && <span role="alert">{error ?? "This result could not be verified."}</span>}
+      {state === "ready" && round && <>
+        <h3>{shortAddress(wallet)} called {callLabel(round.question, round.side)}</h3>
+        <strong className={`share-result ${round.state}`}>{round.state}</strong>
+        <p>{round.question}</p>
+        <p className="receipt-market-id"><span>Event Contract</span><code>{round.marketId}</code></p>
+        <div className="receipt-proof-grid">
+          <div><span>Entry confidence</span><strong>{confidence}%</strong></div>
+          <div><span>Result</span><strong>{round.state}</strong></div>
+          <div><span>Round points</span><strong>{points ?? "Not scored"}</strong></div>
+          <div><span>Provisional skill score</span><strong>{oneCallScore ?? "Not scored"}</strong></div>
+        </div>
+        {round.roundPoints && <p className="receipt-formula">Result value is 1 for a correct call and 0 for an incorrect call. Round points = 100 × (result value − entry confidence). For one settled call, skill score = 50 + round points ÷ 2.</p>}
+        <div className="proof-links">
+          <a href={explorerTransaction(round.fillTransactionHash)} target="_blank" rel="noreferrer">Verify fill ↗</a>
+          {round.settlementTransactionHash
+            ? <a href={explorerTransaction(round.settlementTransactionHash)} target="_blank" rel="noreferrer">Verify finalization ↗</a>
+            : <span>Finalization verified on-chain; indexed transaction link unavailable.</span>}
+          {round.oracleTransactionHash && <a href={explorerTransaction(round.oracleTransactionHash)} target="_blank" rel="noreferrer">Verify oracle ↗</a>}
+        </div>
+      </>}
+    </article>
   );
 }
 

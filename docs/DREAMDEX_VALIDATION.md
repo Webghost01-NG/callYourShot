@@ -176,6 +176,17 @@ The same market subsequently returned status `4` (`Resolved`), finalized
 `true`, voided `false`, and winning outcome index `1` (NO). The wallet's YES is
 therefore the losing token.
 
+The exact directional market was
+`0x00000000000000000000000000000000000000000000000000000000000127a9`.
+The DreamDEX binary module emitted its indexed `MarketFinalized` event for this
+market in transaction
+[`0xc6be2aec93dd415d70fb5d41900c8a521284827fa13ff7435bd91b7121596046`](https://shannon-explorer.somnia.network/tx/0xc6be2aec93dd415d70fb5d41900c8a521284827fa13ff7435bd91b7121596046),
+at the same terminal block reported by the DreamDEX status history. This is the
+public finalization receipt used by the judge route; it is queried from the
+module log at runtime rather than embedded as application state.
+The associated oracle evidence is transaction
+[`0x3b14ed8f2a8d64ac099bb68c63d04b2cdb8e784169018f4a01cbb0ff20d9b0da`](https://shannon-explorer.somnia.network/tx/0x3b14ed8f2a8d64ac099bb68c63d04b2cdb8e784169018f4a01cbb0ff20d9b0da).
+
 ## Guaranteed redemption evidence
 
 To avoid relying on a second directional guess, the wallet minted one complete
