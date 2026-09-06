@@ -6,7 +6,9 @@ fixtures or screenshots for live DreamDEX evidence.
 ## Before judging
 
 1. Install from the committed lockfile with `npm ci`.
-2. Configure the approved public DreamDEX origin in `.env.local`.
+2. Configure the approved public DreamDEX origin and Reown project ID in
+   `.env.local`. Verify both wallet paths in
+   [WALLET_CONNECTION.md](WALLET_CONNECTION.md).
 3. If the social section is part of the demo, configure only the Supabase URL
    and public publishable key after applying the approved migration and Web3
    Auth redirect settings.

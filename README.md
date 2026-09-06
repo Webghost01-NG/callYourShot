@@ -97,8 +97,11 @@ configured DreamDEX operator and venue. It verifies every candidate on-chain,
 loads its real order book, and lets the player choose a market without reusing a
 quote from another event. If discovery, verification, or every live book fails,
 the interface reports that state instead of substituting sample data. An
-injected wallet authorizes each bounded approval and trade; a submitted
-transaction is shown separately from a verified fill.
+injected wallet or configured WalletConnect mobile session authorizes each
+bounded approval and trade; a submitted transaction is shown separately from a
+verified fill. Mobile/QR connection requires the public
+`VITE_REOWN_PROJECT_ID` described in
+[the wallet connection guide](docs/WALLET_CONNECTION.md).
 
 ## Optional social league
 
