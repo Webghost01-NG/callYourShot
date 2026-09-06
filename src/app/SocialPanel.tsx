@@ -7,7 +7,7 @@ import { buildLeagueBoard, type LeagueBoard, type VerifiedLeagueProfile } from "
 import type { SocialConfig } from "../social/config.js";
 import type { Challenge, LeagueProfile } from "../social/model.js";
 import { SupabaseSocialRepository } from "../social/repository.js";
-import { challengeUrl, readSocialRoute, receiptUrl } from "../social/share.js";
+import { challengeUrl, readSocialRoute, receiptUrl, type SocialRoute } from "../social/share.js";
 import type { BrowserDreamDexRuntime, LiveRound } from "./runtime.js";
 import { callLabel } from "./marketLabels.js";
 
@@ -31,6 +31,10 @@ interface SocialPanelProps {
   walletClient?: WalletClient;
   onConnect: () => Promise<ConnectedWallet | null>;
   onEnrollmentChange?: (snapshot: LeagueEnrollmentSnapshot) => void;
+  route?: SocialRoute;
+  rounds?: readonly LiveRound[];
+  marketDiscoveryState?: "loading" | "ready" | "empty" | "stale" | "error";
+  onSelectMarket?: (marketId: Hex) => void;
 }
 
 export interface ConnectedWallet {
@@ -118,10 +122,16 @@ export function SocialPanel({
   walletClient,
   onConnect,
   onEnrollmentChange,
+  route: requestedRoute,
+  rounds = [],
+  marketDiscoveryState = "loading",
+  onSelectMarket,
 }: SocialPanelProps) {
   const repository = useMemo(() => config ? new SupabaseSocialRepository(config) : null, [config]);
-  const route = useMemo(() => readSocialRoute(window.location.search), []);
+  const parsedRoute = useMemo(() => readSocialRoute(window.location.search), []);
+  const route = requestedRoute ?? parsedRoute;
   const [state, setState] = useState<SocialLoadState>(config ? "loading" : "idle");
+  const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [error, setError] = useState<string>();
   const [authWallet, setAuthWallet] = useState<Address | null>(null);
   const [enrollments, setEnrollments] = useState<LeagueProfile[]>([]);
@@ -143,10 +153,12 @@ export function SocialPanel({
   const loadBoard = useCallback(async () => {
     if (!repository || !runtime) return;
     setState("loading");
+    setProfilesLoaded(false);
     setError(undefined);
     try {
       const profiles = await repository.listProfiles();
       setEnrollments(profiles);
+      setProfilesLoaded(true);
       const result = await reconcileEnrollments(runtime, profiles);
       setBoard(buildLeagueBoard(result.verified));
       setFailedProfiles(result.failed);
@@ -210,7 +222,7 @@ export function SocialPanel({
       }
       return;
     }
-    if (state !== "ready") return;
+    if (!profilesLoaded) return;
     let active = true;
     if (route.kind === "challenge") {
       setChallengeEvidence(undefined);
@@ -277,7 +289,7 @@ export function SocialPanel({
       }
     }
     return () => { active = false; };
-  }, [enrollmentByWallet, repository, route, runtime, state]);
+  }, [enrollmentByWallet, profilesLoaded, repository, route, runtime, state]);
 
   async function ensureLeagueIdentity(): Promise<Address> {
     let expectedAddress = address;
@@ -389,25 +401,57 @@ export function SocialPanel({
     }
   }
 
+  const latestSettled = ownEvidence?.evidence.profile.rounds.find((item) => item.state === "won" || item.state === "lost");
+  const challenge = challengeEvidence?.challenge;
+  const challengedRound = challenge ? rounds.find((item) =>
+    item.market.marketId.toLowerCase() === challenge.marketId.toLowerCase()
+    && item.market.expirySec * 1_000n > BigInt(Date.now())
+    && (item.book.yesAsks.length > 0 || item.book.noAsks.length > 0),
+  ) : undefined;
+  const challengeMarketState = challengedRound
+    ? "live"
+    : marketDiscoveryState === "loading"
+      ? "checking"
+      : "unavailable";
+  const canAccept = challenge?.status === "open" && address?.toLowerCase() === challenge.invitedWallet.toLowerCase();
+  const canCancel = challenge?.status === "open" && address?.toLowerCase() === challenge.creatorWallet.toLowerCase();
+  const sharedRoute = route.kind !== "league";
+  const heading = route.kind === "challenge"
+    ? {
+        eyebrow: "Direct friend challenge",
+        title: "Answer the same event. Let DreamDEX prove both calls.",
+        description: "Inspect the invitation first, then make your own independent trade if its exact Event Contract is still live.",
+      }
+    : route.kind === "receipt"
+      ? {
+          eyebrow: "Direct verified receipt",
+          title: "Inspect this call from fill to settlement.",
+          description: "This result is rebuilt from the wallet's real DreamDEX evidence, independently of current market liquidity.",
+        }
+      : {
+          eyebrow: "Skill league",
+          title: "Compete on proof, not bankroll.",
+          description: "Scores are rebuilt from real DreamDEX fills after enrollment. Spending more never improves rank.",
+        };
+
+  useEffect(() => {
+    if (challengedRound && onSelectMarket) onSelectMarket(challengedRound.market.marketId);
+  }, [challengedRound, onSelectMarket]);
+
   if (!config) {
     return (
-      <section className="social-section" id="league" aria-labelledby="league-title">
-        <div className="section-heading"><span className="section-index">03</span><div><p className="eyebrow">Skill league</p><h2 id="league-title">Compete on proof, not bankroll.</h2></div></div>
-        <div className="profile-empty"><strong>Social league is not configured</strong><span>{configError ?? "Add the public Supabase URL and publishable key to enable real enrollments. No sample players are shown."}</span></div>
+      <section className={sharedRoute ? "social-section shared-route-section" : "social-section"} id="league" aria-labelledby="league-title">
+        <div className="section-heading"><span className="section-index">03</span><div><p className="eyebrow">{heading.eyebrow}</p><h2 id="league-title">{heading.title}</h2><p>{heading.description}</p></div></div>
+        <div className="profile-empty"><strong>{sharedRoute ? "This shared proof cannot be loaded" : "Social league is not configured"}</strong><span>{configError ?? "Add the public Supabase URL and publishable key to enable real enrollments. No sample players are shown."}</span></div>
       </section>
     );
   }
 
-  const latestSettled = ownEvidence?.evidence.profile.rounds.find((item) => item.state === "won" || item.state === "lost");
-  const challenge = challengeEvidence?.challenge;
-  const canAccept = challenge?.status === "open" && address?.toLowerCase() === challenge.invitedWallet.toLowerCase();
-  const canCancel = challenge?.status === "open" && address?.toLowerCase() === challenge.creatorWallet.toLowerCase();
-
   return (
-    <section className="social-section" id="league" aria-labelledby="league-title">
+    <section className={sharedRoute ? "social-section shared-route-section" : "social-section"} id="league" aria-labelledby="league-title">
       <div className="section-heading">
         <span className="section-index">03</span>
-        <div><p className="eyebrow">Skill league</p><h2 id="league-title">Compete on proof, not bankroll.</h2><p>Scores are rebuilt from real DreamDEX fills after enrollment. Spending more never improves rank.</p></div>
+        <div><p className="eyebrow">{heading.eyebrow}</p><h2 id="league-title">{heading.title}</h2><p>{heading.description}</p></div>
         <button className="secondary refresh-profile" onClick={() => void loadBoard()} disabled={state === "loading"}>Refresh board</button>
       </div>
 
@@ -427,7 +471,7 @@ export function SocialPanel({
           {challengeState === "loading" && <span aria-live="polite">Rebuilding both records from DreamDEX…</span>}
           {challengeState === "not-found" && <span role="status">This challenge was not found or is no longer available.</span>}
           {challengeState === "error" && <span role="alert">{challengeError ?? "This challenge could not be verified."}</span>}
-          {challengeState === "ready" && challenge && challengeEvidence && <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>Status: {challenge.status}. This app compares independent trades in one market and never escrows funds.</p><div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>Accept with verified wallet</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}</>}
+          {challengeState === "ready" && challenge && challengeEvidence && <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>Status: {challenge.status}. This app compares independent trades in one market and never escrows funds.</p>{challengeMarketState === "checking" && <p className="shared-market-state" role="status">Checking whether this exact Event Contract is still tradable…</p>}{challengeMarketState === "live" && <p className="shared-market-state live" role="status">Exact Event Contract found and selected. <a href="#arena">Go to the matching market ↓</a></p>}{challengeMarketState === "unavailable" && <p className="shared-market-state unavailable" role="status">This exact Event Contract is no longer in the verified live lobby. It may have locked or be temporarily unavailable, so no replacement market has been selected.</p>}<div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>Accept with verified wallet</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}</>}
         </article>
       )}
 
