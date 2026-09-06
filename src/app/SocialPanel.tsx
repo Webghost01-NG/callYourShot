@@ -14,6 +14,13 @@ import { callLabel } from "./marketLabels.js";
 type SocialLoadState = "idle" | "loading" | "ready" | "error";
 type SharedLoadState = "idle" | "loading" | "ready" | "not-found" | "error";
 
+export type LeagueEnrollmentStatus = "disconnected" | "checking" | "enrolled" | "not-enrolled" | "unavailable";
+
+export interface LeagueEnrollmentSnapshot {
+  status: LeagueEnrollmentStatus;
+  address?: Address;
+}
+
 interface SocialPanelProps {
   config: SocialConfig | null;
   configError: string | null;
@@ -23,6 +30,7 @@ interface SocialPanelProps {
   address?: Address;
   walletClient?: WalletClient;
   onConnect: () => Promise<ConnectedWallet | null>;
+  onEnrollmentChange?: (snapshot: LeagueEnrollmentSnapshot) => void;
 }
 
 export interface ConnectedWallet {
@@ -109,6 +117,7 @@ export function SocialPanel({
   address,
   walletClient,
   onConnect,
+  onEnrollmentChange,
 }: SocialPanelProps) {
   const repository = useMemo(() => config ? new SupabaseSocialRepository(config) : null, [config]);
   const route = useMemo(() => readSocialRoute(window.location.search), []);
@@ -137,8 +146,8 @@ export function SocialPanel({
     setError(undefined);
     try {
       const profiles = await repository.listProfiles();
-      const result = await reconcileEnrollments(runtime, profiles);
       setEnrollments(profiles);
+      const result = await reconcileEnrollments(runtime, profiles);
       setBoard(buildLeagueBoard(result.verified));
       setFailedProfiles(result.failed);
       setState("ready");
@@ -170,6 +179,23 @@ export function SocialPanel({
   const ownEvidence = useMemo(() => [...board.ranked, ...board.provisional].find((item) =>
     address && item.enrollment.walletAddress.toLowerCase() === address.toLowerCase(),
   ), [address, board]);
+
+  useEffect(() => {
+    if (!onEnrollmentChange) return;
+    if (!config) {
+      onEnrollmentChange({ status: "unavailable" });
+    } else if (!connected || !address) {
+      onEnrollmentChange({ status: "disconnected" });
+    } else if (ownEnrollment) {
+      onEnrollmentChange({ status: "enrolled", address });
+    } else if (state === "error") {
+      onEnrollmentChange({ status: "unavailable", address });
+    } else if (state === "ready") {
+      onEnrollmentChange({ status: "not-enrolled", address });
+    } else {
+      onEnrollmentChange({ status: "checking", address });
+    }
+  }, [address, config, connected, onEnrollmentChange, ownEnrollment, state]);
 
   useEffect(() => {
     if (!repository || !runtime) return;
@@ -416,7 +442,7 @@ export function SocialPanel({
           {failedProfiles > 0 && <p className="league-warning">{failedProfiles} {failedProfiles === 1 ? "profile was" : "profiles were"} excluded because live evidence could not be verified.</p>}
         </div>
 
-        <aside className="league-actions">
+        <aside className="league-actions" id="league-identity">
           <h3>{ownEnrollment ? "Your league identity" : "Join the league"}</h3>
           <p>{ownEnrollment ? `${nameOf(ownEnrollment)} · ${shortAddress(ownEnrollment.walletAddress)}` : "Sign one login message. It cannot trade or move funds."}</p>
           {!ownEnrollment && <p>Joining makes your wallet, enrollment time, optional name, and challenges public.</p>}

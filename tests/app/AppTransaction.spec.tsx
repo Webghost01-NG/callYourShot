@@ -13,7 +13,34 @@ const runtimeMocks = vi.hoisted(() => ({
   prepareOrder: vi.fn(),
   sendPlan: vi.fn(),
   loadProfile: vi.fn(),
+  loadPublicProfile: vi.fn(),
   close: vi.fn(),
+}));
+
+const socialRepositoryMocks = vi.hoisted(() => ({
+  authenticatedWallet: vi.fn(),
+  listProfiles: vi.fn(),
+}));
+
+const configMocks = vi.hoisted(() => ({
+  socialEnabled: false,
+}));
+
+vi.mock("../../src/app/config.js", () => ({
+  readPublicConfig: () => ({
+    operatorId: 2,
+    venueId: `0x${"5".repeat(64)}`,
+    indexerUrl: "https://indexer.example.test/graphql",
+    wsRpcUrl: "wss://rpc.example.test/ws",
+    httpRpcUrl: "https://rpc.example.test/",
+  }),
+}));
+
+vi.mock("../../src/social/config.js", () => ({
+  readSocialConfig: () => configMocks.socialEnabled ? {
+    supabaseUrl: "https://project.supabase.co",
+    supabasePublishableKey: "sb_publishable_example",
+  } : null,
 }));
 
 vi.mock("wagmi", () => ({
@@ -36,7 +63,16 @@ vi.mock("../../src/app/runtime.js", () => ({
     prepareOrder = runtimeMocks.prepareOrder;
     sendPlan = runtimeMocks.sendPlan;
     loadProfile = runtimeMocks.loadProfile;
+    loadPublicProfile = runtimeMocks.loadPublicProfile;
     close = runtimeMocks.close;
+  },
+}));
+
+vi.mock("../../src/social/repository.js", () => ({
+  SupabaseSocialRepository: class {
+    authenticatedWallet = socialRepositoryMocks.authenticatedWallet;
+    listProfiles = socialRepositoryMocks.listProfiles;
+    close() {}
   },
 }));
 
@@ -106,8 +142,7 @@ async function openWalletReview() {
 
 describe("wallet transaction lifecycle", () => {
   beforeEach(() => {
-    vi.stubEnv("VITE_DREAMDEX_OPERATOR_ID", "2");
-    vi.stubEnv("VITE_DREAMDEX_VENUE_ID", `0x${"5".repeat(64)}`);
+    configMocks.socialEnabled = false;
     runtimeMocks.loadMarkets.mockReset().mockResolvedValue({
       rounds: [round()],
       rejectedCount: 0,
@@ -117,12 +152,17 @@ describe("wallet transaction lifecycle", () => {
     runtimeMocks.prepareOrder.mockReset().mockResolvedValue(plan());
     runtimeMocks.sendPlan.mockReset();
     runtimeMocks.loadProfile.mockReset().mockResolvedValue(undefined);
+    runtimeMocks.loadPublicProfile.mockReset().mockResolvedValue({
+      evidenceGaps: [],
+      profile: { state: "empty", skillScore: null, settledCount: 0, rounds: [] },
+    });
     runtimeMocks.close.mockReset();
+    socialRepositoryMocks.authenticatedWallet.mockReset().mockResolvedValue(account);
+    socialRepositoryMocks.listProfiles.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {
     cleanup();
-    vi.unstubAllEnvs();
   });
 
   it("renders a concise first-approval cancellation without provider internals", async () => {
@@ -158,5 +198,38 @@ describe("wallet transaction lifecycle", () => {
     const approvalLink = screen.getByRole("link", { name: /View approval transaction/i });
     expect(approvalLink.getAttribute("href")).toContain(approvalHash);
     await waitFor(() => expect(runtimeMocks.sendPlan).toHaveBeenCalledTimes(1));
+  }, 10_000);
+
+  it("routes an unenrolled wallet to league enrollment before preparing a ranked call", async () => {
+    configMocks.socialEnabled = true;
+    render(<App />);
+
+    const gate = await screen.findByRole("button", { name: "Join league before calling" });
+    expect(screen.getByText(/Calls made before enrollment stay verifiable, but cannot rank/i)).toBeTruthy();
+
+    await userEvent.click(gate);
+
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Sign in and join" }));
+    expect(runtimeMocks.prepareOrder).not.toHaveBeenCalled();
+  }, 10_000);
+
+  it("keeps ranked calls available after the connected wallet is enrolled", async () => {
+    configMocks.socialEnabled = true;
+    const enrolledAt = new Date().toISOString();
+    socialRepositoryMocks.listProfiles.mockResolvedValue([{
+      id: "22222222-2222-4222-8222-222222222222",
+      walletAddress: account,
+      displayName: "Player one",
+      enrolledAt,
+      formulaVersion: "CYS-EDGE-v1",
+      updatedAt: enrolledAt,
+    }]);
+    render(<App />);
+
+    expect(await screen.findByText("League entry active")).toBeTruthy();
+    await userEvent.click(await screen.findByRole("button", { name: "Review UP call" }));
+
+    expect(await screen.findByRole("button", { name: "Confirm in wallet" })).toBeTruthy();
+    expect(runtimeMocks.prepareOrder).toHaveBeenCalledTimes(1);
   }, 10_000);
 });
