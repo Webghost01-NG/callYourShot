@@ -15,6 +15,7 @@ import {
   encodeFunctionData,
   http,
   parseAbi,
+  parseAbiItem,
   type Hex,
   type Address,
   type WalletClient,
@@ -31,6 +32,9 @@ const poolParametersAbi = parseAbi([
 ]);
 const approveAbi = parseAbi(["function approve(address spender,uint256 amount) returns (bool)"]);
 const erc20MetadataAbi = parseAbi(["function symbol() view returns (string)"]);
+const marketFinalizedEvent = parseAbiItem(
+  "event MarketFinalized(bytes32 indexed marketId, address indexed pool, uint256 marketKey)",
+);
 
 export interface LiveRound {
   market: DiscoveredMarket;
@@ -214,6 +218,18 @@ export class BrowserDreamDexRuntime {
     const reconciler = new DreamDexProfileReconciler(
       this.exchange.client,
       (marketId) => adapter.getSettlement(marketId),
+      async (marketId, blockNumber) => {
+        const module = SOMNIA_TESTNET_ADDRESSES.binaryModule;
+        if (!module) return null;
+        const logs = await this.publicClient.getLogs({
+          address: module,
+          event: marketFinalizedEvent,
+          args: { marketId },
+          fromBlock: blockNumber,
+          toBlock: blockNumber,
+        });
+        return logs[0]?.transactionHash ?? null;
+      },
     );
     return reconciler.reconcile(account, {
       origin: { operatorId: this.config.operatorId, venueId: this.config.venueId },

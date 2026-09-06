@@ -50,10 +50,13 @@ as a fill.
 
 ### 1:10–1:55 — Proof of skill
 
-Use a wallet that already has genuine settled calls. Show the provisional or
-verified skill score, equal-weight formula, history, and explorer links for a
-fill and finalized result. This is the settlement proof and does not require
-waiting for the live round to resolve during judging.
+Open the [genuine settled judge receipt](https://call-your-shot-six.vercel.app/?receiptWallet=0x6CeD8D6Bad8Dfd2e60BCEA116fE74548f959f1F2&receiptMarket=0x00000000000000000000000000000000000000000000000000000000000127a9).
+Show the entry confidence, result, round points, one-call score, and explorer
+links for its fill and Event Contract finalization. Reproduce the displayed
+score with the formula on the receipt. The application rebuilds this public
+evidence from DreamDEX at runtime, so the route does not require a connected
+wallet, Supabase, current market liquidity, or waiting for a demo round to
+resolve.
 
 ### 1:55–2:35 — Human competition
 

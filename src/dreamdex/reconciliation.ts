@@ -84,6 +84,7 @@ export interface ProfileEvidenceClient {
   }>;
   getMarketStatusHistory(marketId: string): Promise<readonly {
     newStatus: string;
+    blockNumber: string;
     txHash: string;
   }[]>;
 }
@@ -206,6 +207,7 @@ export class DreamDexProfileReconciler {
   constructor(
     private readonly client: ProfileEvidenceClient,
     private readonly getSettlement: (marketId: Hex) => Promise<ProfileSettlement>,
+    private readonly getFinalizationTransaction?: (marketId: Hex, blockNumber: bigint) => Promise<Hex | null>,
     private readonly nowSec: () => bigint = () => BigInt(Math.floor(Date.now() / 1_000)),
   ) {}
 
@@ -329,9 +331,19 @@ export class DreamDexProfileReconciler {
       if (onchain.finalized) {
         try {
           const history = await readWithRetry(() => this.client.getMarketStatusHistory(marketId));
+          const reversedHistory = [...history].reverse();
           settlementTransactionHash = asTransactionHash(
-            [...history].reverse().find((entry) => entry.newStatus === "Finalized")?.txHash,
+            reversedHistory.find((entry) => entry.newStatus === "Finalized")?.txHash,
           );
+          const terminalTransition = reversedHistory.find((entry) =>
+            entry.newStatus === "Resolved" || entry.newStatus === "Voided",
+          );
+          if (!settlementTransactionHash && terminalTransition && this.getFinalizationTransaction) {
+            settlementTransactionHash = await readWithRetry(() => this.getFinalizationTransaction!(
+              marketId,
+              asUnsigned(terminalTransition.blockNumber, "terminal market block"),
+            ));
+          }
           if (!settlementTransactionHash) {
             evidenceGaps.push({ marketId, kind: "finalization", message: "Finalization is verified on-chain, but its indexed transaction link is unavailable." });
           }
