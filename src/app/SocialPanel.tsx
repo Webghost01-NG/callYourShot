@@ -3,9 +3,19 @@ import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import type { Address, Hex, WalletClient } from "viem";
 import { formatRational, VERIFIED_CALL_THRESHOLD, type ProfileRound } from "../core/profile.js";
 import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
-import { buildLeagueBoard, type LeagueBoard, type VerifiedLeagueProfile } from "../social/leaderboard.js";
+import {
+  buildLeagueBoard,
+  MAX_BOARD_RECONCILIATIONS,
+  scoreSnapshotFromEvidence,
+  selectBoardCandidates,
+  snapshotIsStale,
+  snapshotMatchesEvidence,
+  type BoardCandidate,
+  type LeagueBoard,
+  type VerifiedLeagueProfile,
+} from "../social/leaderboard.js";
 import type { SocialConfig } from "../social/config.js";
-import type { Challenge, LeagueProfile } from "../social/model.js";
+import type { Challenge, LeagueProfile, LeagueScoreSnapshot } from "../social/model.js";
 import {
   completedChallengeResult,
   deriveChallengeLifecycle,
@@ -87,34 +97,45 @@ function explorerTransaction(hash: Hex): string {
 
 async function reconcileEnrollments(
   runtime: BrowserDreamDexRuntime,
-  enrollments: readonly LeagueProfile[],
-): Promise<{ verified: VerifiedLeagueProfile[]; failed: number }> {
+  candidates: readonly BoardCandidate[],
+): Promise<{ verified: VerifiedLeagueProfile[]; failed: number; drifted: number }> {
   const verified: VerifiedLeagueProfile[] = [];
   let failed = 0;
+  let drifted = 0;
   let cursor = 0;
   async function worker() {
-    while (cursor < enrollments.length) {
-      const enrollment = enrollments[cursor++];
-      if (!enrollment) return;
+    while (cursor < candidates.length) {
+      const candidate = candidates[cursor++];
+      if (!candidate) return;
       try {
         const evidence = await runtime.loadPublicProfile(
-          enrollment.walletAddress,
-          enrollmentStart(enrollment),
+          candidate.enrollment.walletAddress,
+          enrollmentStart(candidate.enrollment),
         );
         if (evidence.evidenceGaps.some((gap) =>
           gap.kind === "fill" || gap.kind === "market" || gap.kind === "settlement",
         )) {
           failed += 1;
         } else {
-          verified.push({ enrollment, evidence });
+          if (candidate.snapshot && !snapshotMatchesEvidence(candidate.snapshot, evidence)) drifted += 1;
+          verified.push({ enrollment: candidate.enrollment, evidence });
         }
       } catch {
         failed += 1;
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(3, enrollments.length) }, () => worker()));
-  return { verified, failed };
+  await Promise.all(Array.from({ length: Math.min(3, candidates.length) }, () => worker()));
+  return { verified, failed, drifted };
+}
+
+interface BoardDiagnostics {
+  totalEnrollments: number;
+  reconciledCandidates: number;
+  snapshotCandidates: number;
+  staleSnapshots: number;
+  driftedSnapshots: number;
+  snapshotIndexAvailable: boolean;
 }
 
 export function SocialPanel({
@@ -142,6 +163,7 @@ export function SocialPanel({
   const [enrollments, setEnrollments] = useState<LeagueProfile[]>([]);
   const [board, setBoard] = useState<LeagueBoard>({ ranked: [], provisional: [] });
   const [failedProfiles, setFailedProfiles] = useState(0);
+  const [boardDiagnostics, setBoardDiagnostics] = useState<BoardDiagnostics>();
   const [displayName, setDisplayName] = useState("");
   const [invitee, setInvitee] = useState("");
   const [challengeLink, setChallengeLink] = useState<string>();
@@ -164,15 +186,31 @@ export function SocialPanel({
       const profiles = await repository.listProfiles();
       setEnrollments(profiles);
       setProfilesLoaded(true);
-      const result = await reconcileEnrollments(runtime, profiles);
+      let snapshotIndexAvailable = true;
+      let snapshots: LeagueScoreSnapshot[] = [];
+      try {
+        snapshots = await repository.listScoreSnapshots();
+      } catch {
+        snapshotIndexAvailable = false;
+      }
+      const candidates = selectBoardCandidates(profiles, snapshots, address);
+      const result = await reconcileEnrollments(runtime, candidates);
       setBoard(buildLeagueBoard(result.verified));
       setFailedProfiles(result.failed);
+      setBoardDiagnostics({
+        totalEnrollments: profiles.length,
+        reconciledCandidates: candidates.length,
+        snapshotCandidates: candidates.filter((item) => item.snapshot).length,
+        staleSnapshots: candidates.filter((item) => item.snapshot && snapshotIsStale(item.snapshot)).length,
+        driftedSnapshots: result.drifted,
+        snapshotIndexAvailable,
+      });
       setState("ready");
     } catch (cause) {
       setError(errorMessage(cause));
       setState("error");
     }
-  }, [repository, runtime]);
+  }, [address, repository, runtime]);
 
   useEffect(() => {
     if (!repository) return;
@@ -319,6 +357,34 @@ export function SocialPanel({
       await loadBoard();
       setActionState("done");
       setActionMessage(ownEnrollment ? "Display name updated." : "You joined. Only calls made after this moment can rank.");
+    } catch (cause) {
+      setActionState("error");
+      setActionMessage(errorMessage(cause));
+    }
+  }
+
+  async function publishOwnSnapshot() {
+    if (!repository || !runtime || !ownEnrollment) return;
+    setActionState("working");
+    setActionMessage(undefined);
+    try {
+      const verified = await ensureLeagueIdentity();
+      if (verified.toLowerCase() !== ownEnrollment.walletAddress.toLowerCase()) {
+        throw new Error("The signed-in wallet does not own this league profile.");
+      }
+      const evidence = await runtime.loadPublicProfile(
+        ownEnrollment.walletAddress,
+        enrollmentStart(ownEnrollment),
+      );
+      if (evidence.evidenceGaps.some((gap) =>
+        gap.kind === "fill" || gap.kind === "market" || gap.kind === "settlement",
+      )) {
+        throw new Error("The snapshot was not published because score evidence is incomplete.");
+      }
+      await repository.publishScoreSnapshot(scoreSnapshotFromEvidence(evidence));
+      await loadBoard();
+      setActionState("done");
+      setActionMessage("Snapshot candidate updated. The board still rebuilds your score from DreamDEX before ranking it.");
     } catch (cause) {
       setActionState("error");
       setActionMessage(errorMessage(cause));
@@ -498,6 +564,13 @@ export function SocialPanel({
       <div className="league-grid">
         <div className="league-table">
           <div className="league-table-heading"><h3>Verified leaderboard</h3><span>{VERIFIED_CALL_THRESHOLD}+ settled calls</span></div>
+          {state === "ready" && boardDiagnostics && <p className="league-snapshot-status" role="status">
+            <strong>Rebuilt from DreamDEX now</strong>
+            <span>{boardDiagnostics.reconciledCandidates} of {boardDiagnostics.totalEnrollments} enrolled wallets checked · hard limit {MAX_BOARD_RECONCILIATIONS} per refresh.</span>
+            <span>{boardDiagnostics.snapshotIndexAvailable
+              ? `${boardDiagnostics.snapshotCandidates} cached candidates guided this refresh${boardDiagnostics.staleSnapshots > 0 ? ` · ${boardDiagnostics.staleSnapshots} stale` : ""}${boardDiagnostics.driftedSnapshots > 0 ? ` · ${boardDiagnostics.driftedSnapshots} changed and were corrected from chain evidence` : ""}.`
+              : "The snapshot index is unavailable; a bounded enrollment sample was verified instead."}</span>
+          </p>}
           {state === "loading" && <div className="league-row muted"><span><i className="spinner" />Verifying every player…</span></div>}
           {state === "error" && <div className="league-row error-text"><span>{error}</span></div>}
           {state === "ready" && board.ranked.length === 0 && <div className="league-row muted qualification-empty"><strong>Qualification is underway</strong><span>{board.provisional.length > 0 ? `${board.provisional.length} ${board.provisional.length === 1 ? "caller is" : "callers are"} building a verified record.` : "No player has reached ten verified calls yet."}</span></div>}
@@ -512,6 +585,7 @@ export function SocialPanel({
           {!ownEnrollment && <p>Joining makes your wallet, enrollment time, optional name, and challenges public.</p>}
           <label><span>Optional display name</span><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={24} placeholder={ownEnrollment?.displayName ?? "Wallet address by default"} /></label>
           <button className="secondary" onClick={() => void joinLeague()} disabled={actionState === "working"}>{ownEnrollment ? "Update name" : connected ? "Sign in and join" : "Connect wallet"}</button>
+          {ownEnrollment && <><button className="secondary" onClick={() => void publishOwnSnapshot()} disabled={actionState === "working"}>Update board snapshot</button><p>Snapshots only nominate bounded candidates. Your displayed score is always rebuilt from DreamDEX.</p></>}
           <hr />
           <h3>Challenge a friend</h3>
           <p>Send the link to any wallet. They join, then each person places their own real trade.</p>

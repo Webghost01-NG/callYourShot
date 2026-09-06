@@ -20,6 +20,7 @@ const runtimeMocks = vi.hoisted(() => ({
 const socialRepositoryMocks = vi.hoisted(() => ({
   authenticatedWallet: vi.fn(),
   listProfiles: vi.fn(),
+  listScoreSnapshots: vi.fn(),
 }));
 
 const configMocks = vi.hoisted(() => ({
@@ -72,6 +73,7 @@ vi.mock("../../src/social/repository.js", () => ({
   SupabaseSocialRepository: class {
     authenticatedWallet = socialRepositoryMocks.authenticatedWallet;
     listProfiles = socialRepositoryMocks.listProfiles;
+    listScoreSnapshots = socialRepositoryMocks.listScoreSnapshots;
     close() {}
   },
 }));
@@ -160,6 +162,7 @@ describe("wallet transaction lifecycle", () => {
     runtimeMocks.close.mockReset();
     socialRepositoryMocks.authenticatedWallet.mockReset().mockResolvedValue(account);
     socialRepositoryMocks.listProfiles.mockReset().mockResolvedValue([]);
+    socialRepositoryMocks.listScoreSnapshots.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {

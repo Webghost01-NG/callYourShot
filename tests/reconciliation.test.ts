@@ -100,6 +100,7 @@ test("rebuilds a scored profile from fill, settlement, and oracle evidence", asy
   const reconciler = new DreamDexProfileReconciler(client([fill()]), async () => settlement(), undefined, () => 1_000n);
   const result = await reconciler.reconcile(account, criteria);
   assert.equal(result.snapshotTimestampSec, 1_000n);
+  assert.equal(result.sourceBlock, 900n);
   assert.equal(result.profile.settledCount, 1);
   assert.equal(result.profile.wins, 1);
   assert.equal(result.profile.rounds[0]!.state, "won");

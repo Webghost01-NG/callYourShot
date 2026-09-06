@@ -117,6 +117,8 @@ VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-or-legacy-anon-key>
 If these values are absent, the application labels the league unconfigured and
 does not display invented players. Never expose a service-role or secret key.
 See [the persistence, authentication, RLS, privacy, and abuse design](docs/SOCIAL_COMPETITION.md).
+The public board uses the bounded, chain-reverified candidate process described
+in [the leaderboard snapshot design](docs/LEADERBOARD_SNAPSHOTS.md).
 
 ## Hackathon evidence
 

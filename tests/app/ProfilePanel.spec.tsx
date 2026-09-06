@@ -10,6 +10,7 @@ const marketId = `0x${"2".repeat(64)}` as Hex;
 function result(): ReconciledProfile {
   return {
     snapshotTimestampSec: 1_000n,
+    sourceBlock: 123n,
     evidenceGaps: [{
       marketId,
       kind: "oracle",

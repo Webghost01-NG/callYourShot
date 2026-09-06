@@ -4,8 +4,15 @@ import type { User } from "@supabase/supabase-js";
 import type { Address, Hex } from "viem";
 import { rational, SCORE_FORMULA_VERSION, type SkillProfile } from "../src/core/profile.js";
 import type { ReconciledProfile } from "../src/dreamdex/reconciliation.js";
-import { buildLeagueBoard, type VerifiedLeagueProfile } from "../src/social/leaderboard.js";
-import type { LeagueProfile } from "../src/social/model.js";
+import {
+  buildLeagueBoard,
+  MAX_BOARD_RECONCILIATIONS,
+  scoreSnapshotFromEvidence,
+  selectBoardCandidates,
+  snapshotMatchesEvidence,
+  type VerifiedLeagueProfile,
+} from "../src/social/leaderboard.js";
+import type { LeagueProfile, LeagueScoreSnapshot } from "../src/social/model.js";
 import { normalizeDisplayName, verifiedWeb3Wallet } from "../src/social/repository.js";
 import { challengeUrl, readSocialRoute, receiptUrl } from "../src/social/share.js";
 
@@ -43,7 +50,7 @@ function entry(options: {
     formulaVersion: SCORE_FORMULA_VERSION,
     updatedAt: "2026-09-04T12:00:00.000Z",
   };
-  const evidence: ReconciledProfile = { profile, snapshotTimestampSec: 1n, evidenceGaps: [] };
+  const evidence: ReconciledProfile = { profile, snapshotTimestampSec: 1n, sourceBlock: 100n, evidenceGaps: [] };
   return { enrollment, evidence };
 }
 
@@ -79,6 +86,37 @@ test("profiles with score-affecting evidence gaps are not published", () => {
   const board = buildLeagueBoard([incomplete]);
   assert.equal(board.ranked.length, 0);
   assert.equal(board.provisional.length, 0);
+});
+
+test("leaderboard candidates are bounded while preserving the connected wallet", () => {
+  const entries = Array.from({ length: 40 }, (_, index) => entry({
+    suffix: (index + 1).toString(16),
+    score: 50 + index,
+  }));
+  const snapshots: LeagueScoreSnapshot[] = entries.map(({ enrollment, evidence }, index) => ({
+    profileId: enrollment.id,
+    walletAddress: enrollment.walletAddress,
+    capturedAt: "2026-09-06T12:00:00.000Z",
+    ...scoreSnapshotFromEvidence(evidence),
+    scoreMicros: index * 1_000_000,
+  }));
+  const preferred = entries[0]!.enrollment.walletAddress;
+  const candidates = selectBoardCandidates(entries.map((item) => item.enrollment), snapshots, preferred);
+
+  assert.equal(candidates.length, MAX_BOARD_RECONCILIATIONS);
+  assert.equal(candidates.some((item) => item.enrollment.walletAddress === preferred), true);
+});
+
+test("cached score values must exactly match freshly rebuilt evidence", () => {
+  const verified = entry({ suffix: "9", score: 63 });
+  const snapshot: LeagueScoreSnapshot = {
+    profileId: verified.enrollment.id,
+    walletAddress: verified.enrollment.walletAddress,
+    capturedAt: "2026-09-06T12:00:00.000Z",
+    ...scoreSnapshotFromEvidence(verified.evidence),
+  };
+  assert.equal(snapshotMatchesEvidence(snapshot, verified.evidence), true);
+  assert.equal(snapshotMatchesEvidence({ ...snapshot, settledCount: 11 }, verified.evidence), false);
 });
 
 test("display names are optional, constrained, and cannot impersonate the product", () => {
