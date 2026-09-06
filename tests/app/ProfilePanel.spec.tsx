@@ -55,6 +55,9 @@ describe("verified profile panel", () => {
     render(<ProfilePanel connected state="ready" result={result()} onRefresh={() => undefined} />);
     expect(screen.getByText("80.00")).toBeTruthy();
     expect(screen.getByText("Provisional · 9 more to rank")).toBeTruthy();
+    expect(screen.getByText("1 of 10 settled calls verified")).toBeTruthy();
+    expect(screen.getByRole("progressbar", { name: /qualification progress/i }).getAttribute("value")).toBe("1");
+    expect(screen.getByText(/never receive a leaderboard rank/i)).toBeTruthy();
     expect(screen.getByRole("link", { name: /Fill receipt/ }).getAttribute("href")).toContain(fillHash);
     expect(screen.getByText("Final-result link unavailable")).toBeTruthy();
     expect(screen.getByText("Oracle link unavailable")).toBeTruthy();

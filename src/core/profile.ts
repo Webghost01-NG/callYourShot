@@ -2,6 +2,7 @@ import type { Address, Hex } from "viem";
 import { CoreValidationError } from "./errors.js";
 
 export const SCORE_FORMULA_VERSION = "CYS-EDGE-v1" as const;
+export const VERIFIED_CALL_THRESHOLD = 10;
 
 export interface ProfileFill {
   id: string;
@@ -245,7 +246,9 @@ export function reconcileProfile(input: {
   return {
     account: input.account,
     formulaVersion: SCORE_FORMULA_VERSION,
-    state: settledCount === 0 ? "empty" : settledCount < 10 ? "provisional" : "verified",
+    state: settledCount === 0
+      ? "empty"
+      : settledCount < VERIFIED_CALL_THRESHOLD ? "provisional" : "verified",
     rounds: chronological.reverse(),
     settledCount,
     wins,
