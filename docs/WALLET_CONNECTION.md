@@ -1,22 +1,28 @@
 # Wallet connection and mobile handoff
 
-Issue #47 adds a production connection path for users who are not already
-inside a wallet browser.
+Current release: `4236cda`. QR pairing is suspended following repeated blank
+WalletConnect panels. Issue #47's original implementation is historical, not a
+claim that mobile/QR acceptance is complete.
 
 ## Supported paths
 
 - **Browser wallet:** Wagmi's injected connector discovers an extension in the
   current browser.
-- **Mobile wallet or QR code:** Wagmi's WalletConnect connector opens Reown's
-  wallet handoff. A mobile user can open an installed wallet; a desktop user can
-  scan the QR code with a phone.
+- **Mobile wallet or QR code:** unavailable in the current release. Do not use
+  it in the submission demo or describe it as working.
+- **Wallet built-in browser:** may expose an injected provider; compatibility
+  requires a separate real-device check and is not claimed here.
 
 The chooser always explains that connecting alone cannot approve a trade or
 move funds. The application still verifies Somnia Shannon (chain ID `50312`),
 invalidates a reviewed call after any account or network change, refreshes the
 exact selected market, and asks the wallet to sign each bounded write.
 
-## Public configuration
+## Re-enablement reference (not active configuration)
+
+Setting a project ID alone does not re-enable QR. The connector was removed
+from registration; restoring it requires a reviewed change and successful
+desktop QR and mobile-handoff acceptance evidence first.
 
 Create an application in the Reown dashboard and set its public project ID in
 every intended Vercel environment:
@@ -26,14 +32,13 @@ VITE_REOWN_PROJECT_ID=<public-project-id>
 ```
 
 This identifier is safe to expose in a browser bundle. It is not a private key
-or wallet secret. The app validates its shape before registering WalletConnect.
-If the value is missing or invalid, mobile/QR connection is disabled and the
-chooser says so; the injected-wallet path remains available.
+or wallet secret. The retained environment parser validates its shape, but the
+current app does not register WalletConnect regardless of this value.
 
 Configure the deployed domain in the Reown project allowlist. Do not commit a
 real project ID to the repository.
 
-## Manual release check
+## Acceptance procedure before restoring QR
 
 1. Open the production deployment in desktop Chrome with a supported extension.
 2. Choose **Browser wallet**, connect, and confirm the address is correct.
