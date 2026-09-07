@@ -75,6 +75,12 @@ the verified leaderboard, create a noncustodial friend challenge, and copy a
 result receipt. Explain that Supabase coordinates identities and links while
 DreamDEX remains the source of trading and score truth.
 
+On a completed real two-wallet challenge, open both fill/result proof links and
+then click **Challenge again on a live event**. Show that the previous opponent
+is prefilled while the old locked market is not: the next interaction must begin
+with a newly discovered live Event Contract. If the real two-wallet acceptance
+record is incomplete, describe this as the implemented path, not measured use.
+
 Point to the board coverage line: snapshots choose a bounded candidate set, but
 every displayed score was rebuilt from DreamDEX during this refresh. If a
 snapshot is stale or changed, show the visible correction count rather than

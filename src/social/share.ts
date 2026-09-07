@@ -6,7 +6,7 @@ const MARKET_ID = /^0x[0-9a-fA-F]{64}$/;
 export type SocialRoute =
   | { kind: "challenge"; challengeId: string }
   | { kind: "receipt"; wallet: Address; marketId: Hex }
-  | { kind: "league" };
+  | { kind: "league"; inviteWallet?: Address };
 
 export function readSocialRoute(search: string): SocialRoute {
   const params = new URLSearchParams(search);
@@ -16,6 +16,10 @@ export function readSocialRoute(search: string): SocialRoute {
   const marketId = params.get("receiptMarket");
   if (wallet && marketId && isAddress(wallet) && MARKET_ID.test(marketId)) {
     return { kind: "receipt", wallet: getAddress(wallet), marketId: marketId.toLowerCase() as Hex };
+  }
+  const inviteWallet = params.get("inviteWallet");
+  if (inviteWallet && isAddress(inviteWallet)) {
+    return { kind: "league", inviteWallet: getAddress(inviteWallet) };
   }
   return { kind: "league" };
 }
@@ -39,5 +43,13 @@ export function receiptUrl(baseUrl: string, wallet: Address, marketId: Hex): str
   const url = cleanUrl(baseUrl);
   url.searchParams.set("receiptWallet", getAddress(wallet));
   url.searchParams.set("receiptMarket", marketId.toLowerCase());
+  return url.toString();
+}
+
+export function rematchUrl(baseUrl: string, inviteWallet: Address): string {
+  if (!isAddress(inviteWallet)) throw new Error("Rematch wallet is invalid.");
+  const url = cleanUrl(baseUrl);
+  url.searchParams.set("inviteWallet", getAddress(inviteWallet));
+  url.hash = "league-identity";
   return url.toString();
 }
