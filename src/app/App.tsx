@@ -18,7 +18,9 @@ import { formatUnits, parseDecimalUnits } from "./amounts.js";
 import { ProfilePanel, type ProfileLoadState } from "./ProfilePanel.js";
 import { cadenceLabel, outcomeLabels } from "./marketLabels.js";
 import {
+  MARKET_DISCOVERY_ENDPOINT_COUNT,
   MarketDiscoveryTimeoutError,
+  marketDiscoveryDeadlineMs,
   withMarketDiscoveryDeadline,
 } from "./marketDiscovery.js";
 import { isUserRejectedRequest, publicErrorMessage, transactionFailureMessage } from "./errors.js";
@@ -184,6 +186,7 @@ export function App() {
   const [walletChooserOpen, setWalletChooserOpen] = useState(false);
   const walletChooserTrigger = useRef<HTMLElement | null>(null);
   const roundRequestId = useRef(0);
+  const marketLoadsInFlight = useRef(0);
   const closedRuntimes = useRef(new WeakSet<BrowserDreamDexRuntime>());
   const selectedMarketIdRef = useRef<Hex | undefined>(undefined);
 
@@ -218,14 +221,21 @@ export function App() {
       setLoadError(configResult.error ?? "Application configuration is unavailable.");
       return;
     }
+    if (silent && marketLoadsInFlight.current > 0) return;
     const requestId = ++roundRequestId.current;
     if (!silent) {
       setLoadState("loading");
       setLoadError(undefined);
     }
     const activeRuntime = runtime;
+    marketLoadsInFlight.current += 1;
     try {
-      const next = await withMarketDiscoveryDeadline(activeRuntime.loadMarkets());
+      const next = await withMarketDiscoveryDeadline(
+        activeRuntime.loadMarkets(),
+        marketDiscoveryDeadlineMs(
+          configResult.config.endpointBundles?.length || MARKET_DISCOVERY_ENDPOINT_COUNT,
+        ),
+      );
       if (requestId !== roundRequestId.current) return;
       setRounds(next.rounds);
       setEndpointDiagnostics(next.endpoint);
@@ -254,6 +264,8 @@ export function App() {
       setEndpointDiagnostics(undefined);
       setLoadError(message);
       setLoadState(message.includes("headroom") || message.includes("Trading") ? "stale" : "error");
+    } finally {
+      marketLoadsInFlight.current -= 1;
     }
   }, [closeRuntimeOnce, configResult, runtime]);
 

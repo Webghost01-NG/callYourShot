@@ -1,6 +1,6 @@
 # Judge release validation
 
-Status date: 2026-09-06
+Status date: 2026-09-07
 
 This report records only checks actually completed against the public release.
 Unavailable integrations and owner-signature checks remain explicit blockers;
@@ -58,18 +58,24 @@ project and origin allowlist are owner-validated.
 | Anonymous social mutation denial | Pass | `enroll_in_league` was denied with HTTP 401 and PostgreSQL code `42501` |
 | Supabase Web3 claim shape | Pass | Client and database read the verified identity from `identity_data.custom_claims`; wrong-network and obsolete flat claims are rejected |
 | Authenticated league enrollment | Pass | Owner-operated production check created wallet `0x2981…D196` as provisional profile `ghost` and persisted a display-name update |
-| Automated core/application suite | Pass | 42 Node tests and 44 Vitest tests passed on the release branch |
+| Automated core/application suite | Pass | 65 Node tests and 81 Vitest tests passed on the recovery branch |
 | TypeScript and production build | Pass | Typecheck and Vite production build completed on the release branch |
 | Dependency audit | Pass | `npm audit --omit=dev` reported zero vulnerabilities |
 | Production claim parser | Pass | The stable deployment returned HTTP 200 and its served social bundle contains the nested-claim parser |
 | Existing wallet signer recovery | Pass | A connected account is resolved from its active connector without a redundant `connectAsync` request |
 | Challenge availability and link fallback | Pass | The UI explains when no real round is available and renders every created link for manual copying |
-| Bounded DreamDEX discovery | Pass | A stalled SDK request reached a retryable error within 20 seconds; a regression test proves retry creates a fresh runtime and ignores late results |
+| Bounded DreamDEX discovery | Pass | Each complete route has a 35-second cold-snapshot budget; the UI bound is derived from all route budgets plus grace, and regression tests prove late timed-out results cannot replace recovered data |
 | Profile-check process lifecycle | Pass | The live command flushed its JSON report and exited with status 0 in approximately 16 seconds instead of retaining the SDK transport indefinitely |
 | Snapshot schema deployment | Pass | Migration `202609060001` was the only pending migration, applied successfully, and the linked `private`/`public` schema lint returned no errors |
 | Anonymous snapshot reads | Pass | The deployed `league_score_snapshots` REST relation returned HTTP 200 through the browser-safe publishable key |
 | Bounded board regression | Pass | Automated tests enforce at most 24 DreamDEX wallet rebuilds per refresh and visible enrollment coverage |
 | Lagging-indexer discovery recovery | Pass | With the official indexer about 10,500 blocks behind both verified RPCs, the read-only live probe chain-verified four current BTC/ETH Event Contracts and read every real order book; no stale row was trusted as authority |
+
+On 2026-09-07, three fresh `BrowserDreamDexRuntime.loadMarkets()` runs exercised
+the production read path with the configured origin and both official endpoint
+bundles. They returned two current, chain-verified markets in 26.368 seconds
+after one clean route failover, then 16.599 seconds and 4.108 seconds on the
+primary route. No run reached the derived UI deadline or fabricated a market.
 
 The visual checks found no clipped primary content at either viewport. The
 no-market snapshot could not exercise the prediction form's keyboard path or a

@@ -2,7 +2,10 @@ import type { IndexerSyncStatus } from "@somnia-chain/markets-sdk";
 import type { DreamDexEndpointBundle } from "./config.js";
 
 export const MAX_ENDPOINT_SNAPSHOT_SKEW_BLOCKS = 3_000n;
-export const ENDPOINT_ATTEMPT_DEADLINE_MS = 8_000;
+// Cold Shannon WebSocket + indexer snapshots have taken just over 30 seconds
+// in production. Keep each complete route bounded, but do not reject a healthy
+// snapshot merely because the public infrastructure is warming up.
+export const ENDPOINT_ATTEMPT_DEADLINE_MS = 35_000;
 
 export interface EndpointDiagnostics {
   endpointId: DreamDexEndpointBundle["id"];
