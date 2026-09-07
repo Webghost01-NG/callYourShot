@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import type { Address, Hex, WalletClient } from "viem";
 import { formatRational, VERIFIED_CALL_THRESHOLD, type ProfileRound } from "../core/profile.js";
@@ -10,7 +10,6 @@ import {
   selectBoardCandidates,
   snapshotIsStale,
   snapshotMatchesEvidence,
-  type BoardCandidate,
   type LeagueBoard,
   type VerifiedLeagueProfile,
 } from "../social/leaderboard.js";
@@ -97,45 +96,78 @@ function explorerTransaction(hash: Hex): string {
 
 async function reconcileEnrollments(
   runtime: BrowserDreamDexRuntime,
-  candidates: readonly BoardCandidate[],
-): Promise<{ verified: VerifiedLeagueProfile[]; failed: number; drifted: number }> {
+  candidates: readonly LeagueProfile[],
+  snapshotsByWallet: ReadonlyMap<string, LeagueScoreSnapshot>,
+): Promise<{ verified: VerifiedLeagueProfile[]; failedWallets: string[]; drifted: number }> {
   const verified: VerifiedLeagueProfile[] = [];
-  let failed = 0;
+  const failedWallets: string[] = [];
   let drifted = 0;
   let cursor = 0;
   async function worker() {
     while (cursor < candidates.length) {
       const candidate = candidates[cursor++];
       if (!candidate) return;
+      const walletKey = candidate.walletAddress.toLowerCase();
+      const snapshot = snapshotsByWallet.get(walletKey);
       try {
         const evidence = await runtime.loadPublicProfile(
-          candidate.enrollment.walletAddress,
-          enrollmentStart(candidate.enrollment),
+          candidate.walletAddress,
+          enrollmentStart(candidate),
         );
         if (evidence.evidenceGaps.some((gap) =>
           gap.kind === "fill" || gap.kind === "market" || gap.kind === "settlement",
         )) {
-          failed += 1;
+          failedWallets.push(walletKey);
         } else {
-          if (candidate.snapshot && !snapshotMatchesEvidence(candidate.snapshot, evidence)) drifted += 1;
-          verified.push({ enrollment: candidate.enrollment, evidence });
+          if (snapshot && !snapshotMatchesEvidence(snapshot, evidence)) drifted += 1;
+          verified.push({ enrollment: candidate, evidence });
         }
       } catch {
-        failed += 1;
+        failedWallets.push(walletKey);
       }
     }
   }
   await Promise.all(Array.from({ length: Math.min(3, candidates.length) }, () => worker()));
-  return { verified, failed, drifted };
+  return { verified, failedWallets, drifted };
 }
 
 interface BoardDiagnostics {
   totalEnrollments: number;
-  reconciledCandidates: number;
+  checkedInCycle: number;
+  cohortNumber: number;
+  cohortCount: number;
+  cycleComplete: boolean;
+  completeCoverage: boolean;
   snapshotCandidates: number;
   staleSnapshots: number;
   driftedSnapshots: number;
   snapshotIndexAvailable: boolean;
+}
+
+interface BoardCoverageCycle {
+  fingerprint: string;
+  enrollments: LeagueProfile[];
+  nextStart: number;
+  complete: boolean;
+  verified: Map<string, VerifiedLeagueProfile>;
+  failedWallets: Set<string>;
+}
+
+function enrollmentFingerprint(profiles: readonly LeagueProfile[]): string {
+  return profiles.map((profile) =>
+    `${profile.walletAddress.toLowerCase()}:${profile.enrolledAt}`,
+  ).sort().join("|");
+}
+
+function emptyCoverageCycle(fingerprint = "", enrollments: LeagueProfile[] = []): BoardCoverageCycle {
+  return {
+    fingerprint,
+    enrollments,
+    nextStart: 0,
+    complete: false,
+    verified: new Map(),
+    failedWallets: new Set(),
+  };
 }
 
 export function SocialPanel({
@@ -178,14 +210,19 @@ export function SocialPanel({
   const [receiptRound, setReceiptRound] = useState<ProfileRound>();
   const [receiptState, setReceiptState] = useState<SharedLoadState>(route.kind === "receipt" ? "loading" : "idle");
   const [receiptError, setReceiptError] = useState<string>();
+  const boardCoverage = useRef<BoardCoverageCycle>(emptyCoverageCycle());
+  const boardRequest = useRef(0);
 
   const loadBoard = useCallback(async () => {
     if (!repository || !runtime) return;
+    const request = ++boardRequest.current;
     setState("loading");
+    setBoardDiagnostics(undefined);
     setProfilesLoaded(false);
     setError(undefined);
     try {
       const profiles = await repository.listProfiles();
+      if (request !== boardRequest.current) return;
       setEnrollments(profiles);
       setProfilesLoaded(true);
       let snapshotIndexAvailable = true;
@@ -195,24 +232,57 @@ export function SocialPanel({
       } catch {
         snapshotIndexAvailable = false;
       }
-      const candidates = selectBoardCandidates(profiles, snapshots, address);
-      const result = await reconcileEnrollments(runtime, candidates);
-      setBoard(buildLeagueBoard(result.verified));
-      setFailedProfiles(result.failed);
+      if (request !== boardRequest.current) return;
+      const fingerprint = enrollmentFingerprint(profiles);
+      if (!boardCoverage.current.fingerprint || boardCoverage.current.complete) {
+        boardCoverage.current = emptyCoverageCycle(fingerprint, profiles);
+      }
+      const cycle = boardCoverage.current;
+      const selection = selectBoardCandidates(cycle.enrollments, cycle.nextStart);
+      const snapshotsByWallet = new Map(snapshots.map((snapshot) => [
+        snapshot.walletAddress.toLowerCase(),
+        snapshot,
+      ]));
+      for (const candidate of selection.candidates) {
+        const key = candidate.walletAddress.toLowerCase();
+        cycle.verified.delete(key);
+        cycle.failedWallets.delete(key);
+      }
+      const result = await reconcileEnrollments(runtime, selection.candidates, snapshotsByWallet);
+      if (request !== boardRequest.current) return;
+      for (const entry of result.verified) {
+        cycle.verified.set(entry.enrollment.walletAddress.toLowerCase(), entry);
+      }
+      for (const wallet of result.failedWallets) cycle.failedWallets.add(wallet);
+      cycle.nextStart = selection.nextCohortStart;
+      cycle.complete = selection.cycleComplete;
+      setBoard(buildLeagueBoard([...cycle.verified.values()]));
+      setFailedProfiles(cycle.failedWallets.size);
       setBoardDiagnostics({
-        totalEnrollments: profiles.length,
-        reconciledCandidates: candidates.length,
-        snapshotCandidates: candidates.filter((item) => item.snapshot).length,
-        staleSnapshots: candidates.filter((item) => item.snapshot && snapshotIsStale(item.snapshot)).length,
+        totalEnrollments: selection.totalEnrollments,
+        checkedInCycle: cycle.verified.size + cycle.failedWallets.size,
+        cohortNumber: selection.cohortNumber,
+        cohortCount: selection.cohortCount,
+        cycleComplete: selection.cycleComplete,
+        completeCoverage: selection.cycleComplete && cycle.failedWallets.size === 0
+          && fingerprint === cycle.fingerprint,
+        snapshotCandidates: selection.candidates.filter((item) =>
+          snapshotsByWallet.has(item.walletAddress.toLowerCase()),
+        ).length,
+        staleSnapshots: selection.candidates.filter((item) => {
+          const snapshot = snapshotsByWallet.get(item.walletAddress.toLowerCase());
+          return snapshot ? snapshotIsStale(snapshot) : false;
+        }).length,
         driftedSnapshots: result.drifted,
         snapshotIndexAvailable,
       });
       setState("ready");
     } catch (cause) {
+      if (request !== boardRequest.current) return;
       setError(errorMessage(cause));
       setState("error");
     }
-  }, [address, repository, runtime]);
+  }, [repository, runtime]);
 
   useEffect(() => {
     if (!repository) return;
@@ -226,7 +296,9 @@ export function SocialPanel({
   }, [repository]);
 
   useEffect(() => {
+    boardCoverage.current = emptyCoverageCycle();
     if (repository && runtime) void loadBoard();
+    return () => { boardRequest.current += 1; };
   }, [loadBoard, repository, runtime]);
 
   const enrollmentByWallet = useMemo(() => new Map(
@@ -386,7 +458,7 @@ export function SocialPanel({
       await repository.publishScoreSnapshot(scoreSnapshotFromEvidence(evidence));
       await loadBoard();
       setActionState("done");
-      setActionMessage("Snapshot candidate updated. The board still rebuilds your score from DreamDEX before ranking it.");
+      setActionMessage("Snapshot updated. It cannot affect board membership; the board still rebuilds your score from DreamDEX before ranking it.");
     } catch (cause) {
       setActionState("error");
       setActionMessage(errorMessage(cause));
@@ -568,7 +640,7 @@ export function SocialPanel({
       <div className="section-heading">
         <span className="section-index">03</span>
         <div><p className="eyebrow">{heading.eyebrow}</p><h2 id="league-title">{heading.title}</h2><p>{heading.description}</p></div>
-        <button className="secondary refresh-profile" onClick={() => void loadBoard()} disabled={state === "loading"}>Refresh board</button>
+        <button className="secondary refresh-profile" onClick={() => void loadBoard()} disabled={state === "loading"}>{boardDiagnostics && !boardDiagnostics.cycleComplete ? "Verify next cohort" : "Refresh board"}</button>
       </div>
 
       {receiptCard}
@@ -585,18 +657,20 @@ export function SocialPanel({
 
       <div className="league-grid">
         <div className="league-table">
-          <div className="league-table-heading"><h3>Verified leaderboard</h3><span>{VERIFIED_CALL_THRESHOLD}+ settled calls</span></div>
+          <div className="league-table-heading"><h3>{boardDiagnostics?.completeCoverage ? "Whole-league verified leaderboard" : "Verified subset"}</h3><span>{VERIFIED_CALL_THRESHOLD}+ settled calls</span></div>
           {state === "ready" && boardDiagnostics && <p className="league-snapshot-status" role="status">
-            <strong>Rebuilt from DreamDEX now</strong>
-            <span>{boardDiagnostics.reconciledCandidates} of {boardDiagnostics.totalEnrollments} enrolled wallets checked · hard limit {MAX_BOARD_RECONCILIATIONS} per refresh.</span>
+            <strong>{boardDiagnostics.completeCoverage ? "Complete league coverage rebuilt from DreamDEX" : "Deterministic coverage scan · verified subset"}</strong>
+            <span>{boardDiagnostics.checkedInCycle} of {boardDiagnostics.totalEnrollments} enrolled wallets checked in this cycle · cohort {boardDiagnostics.cohortNumber} of {boardDiagnostics.cohortCount || 0} · hard limit {MAX_BOARD_RECONCILIATIONS} per refresh.</span>
+            <span>Coverage uses the enrollment list captured at the start of this cycle. New enrollments enter the next cycle. Results are checked across the cycle, not at a single simultaneous block. S# denotes position within the verified subset.</span>
+            <span>Enrollment time and wallet address choose each cohort; published score claims never choose membership.{!boardDiagnostics.cycleComplete ? " Refresh to verify the next cohort—every enrollment is attempted once per cycle." : ""}</span>
             <span>{boardDiagnostics.snapshotIndexAvailable
-              ? `${boardDiagnostics.snapshotCandidates} cached candidates guided this refresh${boardDiagnostics.staleSnapshots > 0 ? ` · ${boardDiagnostics.staleSnapshots} stale` : ""}${boardDiagnostics.driftedSnapshots > 0 ? ` · ${boardDiagnostics.driftedSnapshots} changed and were corrected from chain evidence` : ""}.`
-              : "The snapshot index is unavailable; a bounded enrollment sample was verified instead."}</span>
+              ? `${boardDiagnostics.snapshotCandidates} selected wallets had cached claims used only for post-verification comparison${boardDiagnostics.staleSnapshots > 0 ? ` · ${boardDiagnostics.staleSnapshots} stale` : ""}${boardDiagnostics.driftedSnapshots > 0 ? ` · ${boardDiagnostics.driftedSnapshots} changed and were corrected from chain evidence` : ""}.`
+              : "The optional snapshot comparison index is unavailable; deterministic membership coverage is unaffected."}</span>
           </p>}
-          {state === "loading" && <div className="league-row muted"><span><i className="spinner" />Verifying every player…</span></div>}
+          {state === "loading" && <div className="league-row muted"><span><i className="spinner" />Verifying the next deterministic cohort…</span></div>}
           {state === "error" && <div className="league-row error-text"><span>{error}</span></div>}
           {state === "ready" && board.ranked.length === 0 && <div className="league-row muted qualification-empty"><strong>Qualification is underway</strong><span>{board.provisional.length > 0 ? `${board.provisional.length} ${board.provisional.length === 1 ? "caller is" : "callers are"} building a verified record.` : "No player has reached ten verified calls yet."}</span></div>}
-          {board.ranked.map((entry, index) => <LeagueRow key={entry.enrollment.id} entry={entry} rank={index + 1} />)}
+          {board.ranked.map((entry, index) => <LeagueRow key={entry.enrollment.id} entry={entry} rank={index + 1} subset={!boardDiagnostics?.completeCoverage} />)}
           {board.provisional.length > 0 && <><div className="league-divider">Qualification progress · not ranked</div>{board.provisional.map((entry) => <LeagueRow key={entry.enrollment.id} entry={entry} provisional />)}</>}
           {failedProfiles > 0 && <p className="league-warning">{failedProfiles} {failedProfiles === 1 ? "profile was" : "profiles were"} excluded because live evidence could not be verified.</p>}
         </div>
@@ -607,7 +681,7 @@ export function SocialPanel({
           {!ownEnrollment && <p>Joining makes your wallet, enrollment time, optional name, and challenges public.</p>}
           <label><span>Optional display name</span><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={24} placeholder={ownEnrollment?.displayName ?? "Wallet address by default"} /></label>
           <button className="secondary" onClick={() => void joinLeague()} disabled={actionState === "working"}>{ownEnrollment ? "Update name" : connected ? "Sign in and join" : "Connect wallet"}</button>
-          {ownEnrollment && <><button className="secondary" onClick={() => void publishOwnSnapshot()} disabled={actionState === "working"}>Update board snapshot</button><p>Snapshots only nominate bounded candidates. Your displayed score is always rebuilt from DreamDEX.</p></>}
+          {ownEnrollment && <><button className="secondary" onClick={() => void publishOwnSnapshot()} disabled={actionState === "working"}>Update evidence cache</button><p>Cached claims never choose board membership or rank. Your displayed score is always rebuilt from DreamDEX.</p></>}
           <hr />
           <h3>Challenge a friend</h3>
           <p>Send the link to any wallet. They join, then each person places their own real trade.</p>
@@ -679,12 +753,12 @@ function SharedReceiptCard({
   );
 }
 
-function LeagueRow({ entry, rank, provisional = false }: { entry: VerifiedLeagueProfile; rank?: number; provisional?: boolean }) {
+function LeagueRow({ entry, rank, provisional = false, subset = false }: { entry: VerifiedLeagueProfile; rank?: number; provisional?: boolean; subset?: boolean }) {
   const profile = entry.evidence.profile;
   const progress = Math.min(profile.settledCount, VERIFIED_CALL_THRESHOLD);
   return (
     <div className={`league-row${provisional ? " provisional-row" : ""}`}>
-      <b>{rank ? `#${rank}` : "P"}</b>
+      <b>{rank ? `${subset ? "S" : ""}#${rank}` : "P"}</b>
       <span><strong>{nameOf(entry.enrollment)}</strong><small>{shortAddress(entry.enrollment.walletAddress)}{provisional && ` · ${profile.skillScore ? `provisional score ${formatRational(profile.skillScore)}` : "awaiting first settled call"}`}</small></span>
       {provisional
         ? <span className="league-progress"><strong>{progress}/{VERIFIED_CALL_THRESHOLD}</strong><progress value={progress} max={VERIFIED_CALL_THRESHOLD} aria-label={`${nameOf(entry.enrollment)} qualification progress`} /><small>not ranked</small></span>

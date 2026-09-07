@@ -82,10 +82,11 @@ event**. Show that the previous opponent is prefilled while the old locked marke
 is not. If it is still pending, call the two-fill activation complete but do not
 claim a terminal comparison or rematch result.
 
-Point to the board coverage line: snapshots choose a bounded candidate set, but
-every displayed score was rebuilt from DreamDEX during this refresh. If a
-snapshot is stale or changed, show the visible correction count rather than
-calling the cache authoritative.
+Point to the board coverage line: enrollment time and wallet address choose the
+bounded cohort; published score claims cannot buy shortlist membership. If the
+cycle is partial, call it a verified subset and use **Verify next cohort** to
+show the finite coverage path. If a snapshot is stale or changed, show the
+visible correction count rather than calling the cache authoritative.
 
 If Supabase is not validated, show the explicit “not configured” state and omit
 social-write claims.

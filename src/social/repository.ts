@@ -206,6 +206,7 @@ export class SupabaseSocialRepository {
       const { data, error } = await this.client.from("league_profiles")
         .select("id,wallet_address,display_name,enrolled_at,formula_version,updated_at")
         .order("enrolled_at", { ascending: true })
+        .order("wallet_address", { ascending: true })
         .range(from, from + PROFILE_PAGE_SIZE - 1);
       if (error) throw error;
       profiles.push(...data.map(mapProfile));

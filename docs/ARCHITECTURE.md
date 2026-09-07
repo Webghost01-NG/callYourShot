@@ -68,11 +68,12 @@ still produce an EIP-1193 provider for the same account, chain-switch,
 review-invalidation, and wallet-controlled transaction pipeline. See
 [WALLET_CONNECTION.md](WALLET_CONNECTION.md).
 
-Issue #48 adds a bounded, untrusted leaderboard candidate index. Supabase may
+Issue #78 makes bounded leaderboard membership deterministic. Supabase may
 store owner-published score snapshots with a formula version, exact rational,
-sample count, evidence block, and server timestamp. The browser verifies at
-most 24 candidates from DreamDEX and ranks only those fresh rebuilds; stored
-scores never enter the ranking reducer. See
+sample count, evidence block, and server timestamp, but these claims never
+choose which wallets are checked. The browser walks enrollment-time and wallet-
+address cohorts of at most 24, accumulates the active coverage cycle, and ranks
+only fresh DreamDEX rebuilds. Stored scores never enter the ranking reducer. See
 [LEADERBOARD_SNAPSHOTS.md](LEADERBOARD_SNAPSHOTS.md).
 
 The core does not select or depend on:

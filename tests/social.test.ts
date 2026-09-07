@@ -88,23 +88,45 @@ test("profiles with score-affecting evidence gaps are not published", () => {
   assert.equal(board.provisional.length, 0);
 });
 
-test("leaderboard candidates are bounded while preserving the connected wallet", () => {
+test("leaderboard candidates ignore unverified score claims and cover every enrollment", () => {
   const entries = Array.from({ length: 40 }, (_, index) => entry({
     suffix: (index + 1).toString(16),
     score: 50 + index,
   }));
-  const snapshots: LeagueScoreSnapshot[] = entries.map(({ enrollment, evidence }, index) => ({
-    profileId: enrollment.id,
-    walletAddress: enrollment.walletAddress,
-    capturedAt: "2026-09-06T12:00:00.000Z",
-    ...scoreSnapshotFromEvidence(evidence),
-    scoreMicros: index * 1_000_000,
-  }));
-  const preferred = entries[0]!.enrollment.walletAddress;
-  const candidates = selectBoardCandidates(entries.map((item) => item.enrollment), snapshots, preferred);
+  const enrollments = entries.map((item) => item.enrollment);
+  const first = selectBoardCandidates(enrollments);
+  const repeated = selectBoardCandidates([...enrollments].reverse());
+  const second = selectBoardCandidates(enrollments, first.nextCohortStart);
+  const selectedWallets = [...first.candidates, ...second.candidates]
+    .map((item) => item.walletAddress);
 
-  assert.equal(candidates.length, MAX_BOARD_RECONCILIATIONS);
-  assert.equal(candidates.some((item) => item.enrollment.walletAddress === preferred), true);
+  assert.equal(first.candidates.length, MAX_BOARD_RECONCILIATIONS);
+  assert.deepEqual(
+    first.candidates.map((item) => item.walletAddress),
+    repeated.candidates.map((item) => item.walletAddress),
+  );
+  assert.equal(first.cycleComplete, false);
+  assert.equal(first.cohortNumber, 1);
+  assert.equal(first.cohortCount, 2);
+  assert.equal(second.cycleComplete, true);
+  assert.equal(second.cohortNumber, 2);
+  assert.equal(new Set(selectedWallets).size, enrollments.length);
+  assert.deepEqual(new Set(selectedWallets), new Set(enrollments.map((item) => item.walletAddress)));
+});
+
+test("a league within the reconciliation limit receives complete coverage at once", () => {
+  const enrollments = Array.from({ length: MAX_BOARD_RECONCILIATIONS }, (_, index) => entry({
+    suffix: (index + 1).toString(16),
+    score: 50 + index,
+  }).enrollment);
+
+  const selection = selectBoardCandidates(enrollments);
+
+  assert.equal(selection.candidates.length, enrollments.length);
+  assert.equal(selection.cycleComplete, true);
+  assert.equal(selection.nextCohortStart, 0);
+  assert.equal(selection.cohortNumber, 1);
+  assert.equal(selection.cohortCount, 1);
 });
 
 test("cached score values must exactly match freshly rebuilt evidence", () => {
