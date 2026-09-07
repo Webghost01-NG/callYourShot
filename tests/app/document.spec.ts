@@ -13,4 +13,20 @@ describe("application document metadata", () => {
     expect(favicon).toMatch(/^<svg[^>]+viewBox="0 0 64 64"/);
     expect(favicon).toContain("#baff3c");
   });
+
+  it("publishes complete canonical and social-preview metadata", async () => {
+    const [document, preview, previewPng] = await Promise.all([
+      readFile(resolve(process.cwd(), "index.html"), "utf8"),
+      readFile(resolve(process.cwd(), "public/social-preview.svg"), "utf8"),
+      readFile(resolve(process.cwd(), "public/social-preview.png")),
+    ]);
+
+    expect(document).toContain('rel="canonical" href="https://call-your-shot-six.vercel.app/"');
+    expect(document).toContain('property="og:image" content="https://call-your-shot-six.vercel.app/social-preview.png"');
+    expect(document).toContain('name="twitter:card" content="summary_large_image"');
+    expect(preview).toMatch(/^<svg[^>]+viewBox="0 0 1200 630"/);
+    expect(previewPng.subarray(1, 4).toString()).toBe("PNG");
+    expect(previewPng.readUInt32BE(16)).toBe(1_200);
+    expect(previewPng.readUInt32BE(20)).toBe(630);
+  });
 });

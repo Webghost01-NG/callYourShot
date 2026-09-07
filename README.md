@@ -1,51 +1,128 @@
 # Call Your Shot
 
-Call Your Shot is a human-first prediction league powered by DreamDEX Event
-Contracts on Somnia. Players make real UP or DOWN trades on recurring crypto
-price rounds and build a verifiable record based on decision quality rather
-than account size.
+> A prediction league where every score starts with a real DreamDEX fill.
 
-## Status
+[**Open the live app**](https://call-your-shot-six.vercel.app) ·
+[**Inspect a genuine settled receipt**](https://call-your-shot-six.vercel.app/?receiptWallet=0x6CeD8D6Bad8Dfd2e60BCEA116fE74548f959f1F2&receiptMarket=0x00000000000000000000000000000000000000000000000000000000000127a9) ·
+[**Follow the 3-minute demo**](docs/DEMO_RUNBOOK.md)
 
-The project has a live-round application, database-free verified skill
-profiles, and an optional Supabase-backed social league. Trading, scoring, and
-shared results remain backed by the DreamDEX integration core.
+![A genuine Call Your Shot receipt rebuilt from a real DreamDEX fill and finalized Event Contract](public/media/verified-receipt.png)
 
-No market, transaction, settlement, wallet, or production result may be
-fabricated. A missing integration must be reported as unavailable or blocked.
+## The 30-second pitch
 
-## Product promise
+Pick a live event, call **YES or NO**, and set the most you can lose. DreamDEX
+executes the real trade and Somnia settles the result. Call Your Shot turns that
+public evidence into a skill record, so friends can compete on decision quality
+instead of wallet size—and nobody can upload a screenshot or spend more to buy
+a better rank.
 
-> Prove how well you can read the market, not how much money you have.
+## Why this should exist beside DreamDEX
 
-## Delivery order
+DreamDEX is the trading venue. Call Your Shot is the competition layer:
 
-1. Validate DreamDEX discovery, books, orders, fills, settlement, and redemption.
-2. Define the domain model and transparent skill score.
-3. Implement the framework-independent DreamDEX adapter.
-4. Build the live prediction experience.
-5. Add verified profiles, challenges, and leaderboards.
-6. Harden the product and prepare the judge demo.
+- one simple call instead of a professional trading terminal;
+- a result counts only after an `OrderFilled` event—not after a button click or
+  merely mined transaction;
+- probability-aware scoring gives every settled call equal weight, regardless
+  of stake size;
+- shareable receipts and friend challenges resolve from independent on-chain
+  trades without custody or tournament escrow;
+- every displayed leaderboard score is rebuilt from DreamDEX evidence; the
+  database can nominate candidates but cannot manufacture rank.
 
-Work is tracked in [GitHub Issues](https://github.com/Webghost01-NG/callYourShot/issues).
-See [the product brief](docs/PRODUCT.md), [engineering workflow](docs/ENGINEERING.md),
-and [delivery roadmap](docs/ROADMAP.md) before contributing.
+No AI signal is forced into the product. The human decision—and its proof—is
+the experience.
 
-## DreamDEX validation harness
+## What judges can verify now
 
-Issue #2 includes a local, wallet-controlled harness for reproducing testnet
-order, complete-set, and redemption checks:
+| Claim | Public evidence |
+|---|---|
+| A real order filled | [DreamDEX fill transaction](https://shannon-explorer.somnia.network/tx/0x7b436f7b324ac645cf5b820e71515e28609c70068edea31d17457f7934604a6e) |
+| The same Event Contract finalized | [Finalization transaction](https://shannon-explorer.somnia.network/tx/0xc6be2aec93dd415d70fb5d41900c8a521284827fa13ff7435bd91b7121596046) |
+| Its oracle answer is traceable | [Oracle transaction](https://shannon-explorer.somnia.network/tx/0x3b14ed8f2a8d64ac099bb68c63d04b2cdb8e784169018f4a01cbb0ff20d9b0da) |
+| The score can be rebuilt without a wallet or database | [Runtime-reconciled receipt](https://call-your-shot-six.vercel.app/?receiptWallet=0x6CeD8D6Bad8Dfd2e60BCEA116fE74548f959f1F2&receiptMarket=0x00000000000000000000000000000000000000000000000000000000000127a9) |
+| Approval, fill, settlement, redemption, and refunds were exercised | [Integration validation](docs/DREAMDEX_VALIDATION.md) |
 
-```bash
-npm install
-npm run validate:dreamdex
+The public receipt deliberately shows a losing call. It is genuine evidence,
+not a hand-picked success screen.
+
+## Verification architecture
+
+```mermaid
+flowchart LR
+  U[Player] --> UI[Call Your Shot UI]
+  UI --> D[Bounded market discovery]
+  D --> I[DreamDEX indexer<br/>candidate source]
+  D --> C[Somnia contracts<br/>current authority]
+  C --> B[Real on-chain order book]
+  B --> W[Wallet-reviewed<br/>approval + order]
+  W --> F[Decoded OrderFilled]
+  F --> S[Finalized Event Contract<br/>+ oracle evidence]
+  S --> P[Deterministic skill record]
+  P --> L[Receipts, challenges,<br/>leaderboard]
+  DB[(Supabase)] -. identity, invitations,<br/>candidate snapshots .-> L
+  L --> C
 ```
 
-Open `http://127.0.0.1:4173`. The harness never receives a private key: it
-prepares runtime-discovered transactions and the injected browser wallet signs
-each transaction after showing it to the owner.
+The indexer discovers a bounded set of candidates. Before display or write, the
+app verifies the configured origin and the market's current module binding,
+status, expiry, collateral, outcome IDs, pool constraints, and real book. A
+lagging indexer can nominate a row but cannot authorize a stale market. Reviewed
+writes remain pinned to one market and endpoint route; wallet writes are never
+automatically retried.
 
-## Core verification
+## DreamDEX depth
+
+This is not a generic prediction UI. The implementation uses
+`@somnia-chain/markets-sdk` for live multi-market discovery, binary order books,
+wallet-bound IOC order preparation, fill decoding, settlement extraction, and
+outcome redemption. It also handles the failure modes that matter for rolling
+Event Contracts:
+
+- trusted operator and venue scoping;
+- current-chain checks after indexer discovery;
+- recycled pool protection by keying records to `marketId`;
+- per-pool tick, lot, and minimum-quantity reads with bigint arithmetic;
+- explicit approval, submitted, mined-but-unfilled, filled, locked, stale, and
+  unavailable states;
+- exact fill attribution, permanent settlement lookup, void handling, and
+  oracle/finalization links;
+- runtime recovery across the two SDK-published Shannon RPC aliases without
+  mixing partial endpoint snapshots.
+
+See [architecture](docs/ARCHITECTURE.md),
+[domain and scoring](docs/DOMAIN_AND_SCORING.md), and
+[DreamDEX validation](docs/DREAMDEX_VALIDATION.md) for the full boundaries.
+
+## Product loop
+
+1. Pick a current Event Contract and make one independently wallet-signed call.
+2. Share a challenge tied to that exact `marketId` with one wallet.
+3. The friend joins and places their own DreamDEX trade; no funds are pooled.
+4. After settlement, compare both calls using the same public scoring formula.
+5. Share the proof or rematch on a newly discovered live event.
+
+The loop creates genuine DreamDEX activity only when two people choose to trade.
+It does not reward wash volume, stake size, or self-reported outcomes. The first
+real two-wallet production journey remains an explicit acceptance item in
+[Issue #50](https://github.com/Webghost01-NG/callYourShot/issues/50); no user or
+engagement numbers are claimed before that evidence exists.
+
+## Run locally
+
+Requirements: Node.js 22 and a browser wallet on Somnia Shannon testnet.
+
+```bash
+npm ci
+cp .env.example .env.local
+npm run dev
+```
+
+Provide the organizer-approved public DreamDEX operator and venue values in
+`.env.local`. Mobile/QR wallets additionally require a real public Reown project
+ID. The optional social league requires the public Supabase URL and publishable
+key after applying the committed migrations. Never place a private key,
+service-role key, or seed phrase in browser configuration.
 
 ```bash
 npm run typecheck
@@ -53,87 +130,17 @@ npm test
 npm run build
 ```
 
-The read-only live check additionally requires trusted DreamDEX origin values:
+The wallet-controlled transaction harness is available with
+`npm run validate:dreamdex`. The read-only live and profile checks are documented
+in [the release validation report](docs/RELEASE_VALIDATION.md).
 
-```bash
-DREAMDEX_OPERATOR_ID=<id> DREAMDEX_VENUE_ID=<bytes32> npm run check:live
-```
+## Submission and honest limitations
 
-See [the approved core architecture](docs/ARCHITECTURE.md).
-Profile derivation and evidence-failure behavior are specified in
-[the reconciliation design](docs/PROFILE_RECONCILIATION.md).
-
-Before presenting the project, follow the [judge demo runbook](docs/DEMO_RUNBOOK.md)
-and review the [hardening and remaining-risk report](docs/HARDENING_REPORT.md).
-
-The database-free profile can also be checked read-only from the command line.
-The account is a public address; no private key is accepted or needed:
-
-```bash
-PROFILE_ACCOUNT=<address> DREAMDEX_OPERATOR_ID=<id> DREAMDEX_VENUE_ID=<bytes32> npm run check:profile
-```
-
-## Live application
-
-Judge-accessible deployment: **https://call-your-shot-six.vercel.app**
-
-The deployment intentionally fails closed when no eligible live DreamDEX round
-or book is available. It never substitutes a sample market. Deployment evidence
-and the remaining owner-operated checks are recorded in
-[the release validation report](docs/RELEASE_VALIDATION.md).
-Official Shannon endpoint health checks and whole-route recovery are documented
-in [the endpoint recovery design](docs/ENDPOINT_RECOVERY.md).
-
-Copy `.env.example` to `.env.local` and provide the public DreamDEX operator and
-venue identity supplied by the event organizer. Never put wallet credentials in
-an environment file.
-
-```bash
-npm run dev
-```
-
-The application discovers a bounded set of live binary Event Contracts from the
-configured DreamDEX operator and venue. It verifies every candidate on-chain,
-loads its real order book, and lets the player choose a market without reusing a
-quote from another event. If discovery, verification, or every live book fails,
-the interface reports that state instead of substituting sample data. An
-injected wallet or configured WalletConnect mobile session authorizes each
-bounded approval and trade; a submitted transaction is shown separately from a
-verified fill. Mobile/QR connection requires the public
-`VITE_REOWN_PROJECT_ID` described in
-[the wallet connection guide](docs/WALLET_CONNECTION.md).
-
-## Optional social league
-
-Apply the approved migration to a Supabase project, enable Ethereum Web3 Auth,
-and configure the application's exact local and deployed redirect URLs. Then
-set only these public browser values:
-
-```bash
-VITE_SUPABASE_URL=<project-url>
-VITE_SUPABASE_PUBLISHABLE_KEY=<publishable-or-legacy-anon-key>
-```
-
-If these values are absent, the application labels the league unconfigured and
-does not display invented players. Never expose a service-role or secret key.
-See [the persistence, authentication, RLS, privacy, and abuse design](docs/SOCIAL_COMPETITION.md).
-The public board uses the bounded, chain-reverified candidate process described
-in [the leaderboard snapshot design](docs/LEADERBOARD_SNAPSHOTS.md).
-
-## Hackathon evidence
-
-- [Genuine settled judge receipt](https://call-your-shot-six.vercel.app/?receiptWallet=0x6CeD8D6Bad8Dfd2e60BCEA116fE74548f959f1F2&receiptMarket=0x00000000000000000000000000000000000000000000000000000000000127a9) — rebuilt at runtime from the public DreamDEX fill and finalized Event Contract; it does not require a connected wallet, Supabase, or a currently liquid market
-- [DreamDEX integration and transaction evidence](docs/DREAMDEX_VALIDATION.md)
-- [Multi-market live discovery evidence](docs/MULTI_MARKET_VALIDATION.md)
-- [SDK and documentation feedback](docs/DREAMDEX_FEEDBACK.md)
+- [Submission checklist](docs/SUBMISSION_CHECKLIST.md)
 - [Judge demo runbook](docs/DEMO_RUNBOOK.md)
-- [Release validation and rollback](docs/RELEASE_VALIDATION.md)
+- [Release validation and remaining owner checks](docs/RELEASE_VALIDATION.md)
+- [SDK and documentation feedback](docs/DREAMDEX_FEEDBACK.md)
 
-## Repository policy
-
-- Never work directly on `main`.
-- Use one focused branch and pull request per issue.
-- Review and verify each pull request before merging.
-- Do not begin a dependent issue until its prerequisite pull request is merged.
-- Never commit secrets, private keys, or wallet credentials.
-- Do not use mock data as if it were live DreamDEX data.
+This is testnet software, not financial advice. Live market availability depends
+on the official DreamDEX indexer, Somnia RPCs, current Event Contracts, and real
+order-book liquidity. The app fails visibly rather than substituting fixtures.
