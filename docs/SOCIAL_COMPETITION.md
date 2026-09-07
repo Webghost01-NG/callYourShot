@@ -118,6 +118,14 @@ Challenge links contain a random database UUID. Result links contain only a
 public wallet address and DreamDEX `marketId`; the receiver rebuilds the result
 and receives explorer links for the underlying fill and finalization evidence.
 
+Terminal challenges expose a rematch route. It carries only the previous
+opponent's public wallet, then returns to bounded live discovery; it never
+reuses the old challenge ID, locked market, outcome, or price. The player must
+choose a newly verified live event and create another independent challenge.
+The full activation, comparison, repeat-use definitions, and real-wallet
+acceptance steps are in
+[GROWTH_LOOP_VALIDATION.md](GROWTH_LOOP_VALIDATION.md).
+
 ## Privacy and abuse constraints
 
 - Wallet addresses, optional display names, enrollments, and challenges are

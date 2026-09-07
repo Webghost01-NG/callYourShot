@@ -14,7 +14,7 @@ import {
 } from "../src/social/leaderboard.js";
 import type { LeagueProfile, LeagueScoreSnapshot } from "../src/social/model.js";
 import { normalizeDisplayName, verifiedWeb3Wallet } from "../src/social/repository.js";
-import { challengeUrl, readSocialRoute, receiptUrl } from "../src/social/share.js";
+import { challengeUrl, readSocialRoute, receiptUrl, rematchUrl } from "../src/social/share.js";
 
 const marketId = `0x${"a".repeat(64)}` as Hex;
 
@@ -171,4 +171,8 @@ test("shared links contain only reconstructable evidence keys", () => {
   const id = "123e4567-e89b-42d3-a456-426614174000";
   const challenge = challengeUrl("https://call.example/", id);
   assert.deepEqual(readSocialRoute(new URL(challenge).search), { kind: "challenge", challengeId: id });
+
+  const rematch = rematchUrl("https://call.example/?challenge=old#league", wallet);
+  assert.deepEqual(readSocialRoute(new URL(rematch).search), { kind: "league", inviteWallet: wallet });
+  assert.equal(new URL(rematch).hash, "#league-identity");
 });

@@ -454,6 +454,94 @@ describe("social competition panel", () => {
     expect(onSelectMarket).not.toHaveBeenCalled();
   });
 
+  it("turns a completed comparison into a prefilled live-event rematch", async () => {
+    const creator = `0x${"1".repeat(40)}` as Address;
+    const invitee = `0x${"2".repeat(40)}` as Address;
+    const marketId = `0x${"3".repeat(64)}` as Hex;
+    const challengeId = "11111111-1111-4111-8111-111111111111";
+    const enrolledAt = "2026-09-04T12:00:00.000Z";
+    repositoryMocks.listProfiles.mockResolvedValue([creator, invitee].map((walletAddress, index) => ({
+      id: `${index + 2}2222222-2222-4222-8222-222222222222`,
+      walletAddress,
+      displayName: null,
+      enrolledAt,
+      formulaVersion: "CYS-EDGE-v1" as const,
+      updatedAt: enrolledAt,
+    })));
+    repositoryMocks.getChallenge.mockResolvedValue({
+      id: challengeId,
+      creatorWallet: creator,
+      invitedWallet: invitee,
+      opponentWallet: invitee,
+      marketId,
+      status: "accepted",
+      createdAt: enrolledAt,
+      acceptedAt: enrolledAt,
+      cancelledAt: null,
+    });
+    const loadPublicProfile = vi.fn().mockImplementation(async (wallet: Address) => ({
+      evidenceGaps: [],
+      profile: {
+        state: "provisional",
+        skillScore: { numerator: 50n, denominator: 1n },
+        settledCount: 1,
+        rounds: [{
+          marketId,
+          question: "Will this event settle YES?",
+          side: wallet.toLowerCase() === creator.toLowerCase() ? "UP" : "DOWN",
+          state: "won",
+          roundPoints: { numerator: 10n, denominator: 1n },
+          fillTransactionHash: `0x${"4".repeat(64)}`,
+          settlementTransactionHash: `0x${"5".repeat(64)}`,
+        }],
+      },
+    }));
+
+    render(<SocialPanel
+      config={{
+        supabaseUrl: "https://project.supabase.co",
+        supabasePublishableKey: "sb_publishable_example",
+      }}
+      configError={null}
+      runtime={{ loadPublicProfile } as never}
+      route={{ kind: "challenge", challengeId }}
+      rounds={[]}
+      marketDiscoveryState="ready"
+      connected={true}
+      address={invitee}
+      walletClient={{ account: { address: invitee } } as WalletClient}
+      onConnect={async () => null}
+    />);
+
+    expect(await screen.findByText(/Completed · both calls earned the same score/i)).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: /Verify fill/i })).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: /Verify result/i })).toHaveLength(2);
+    const rematch = screen.getByRole("link", { name: /Challenge again on a live event/i });
+    expect(rematch.getAttribute("href")).toContain(`inviteWallet=${creator}`);
+    expect(rematch.getAttribute("href")).toContain("#league-identity");
+  });
+
+  it("prefills the previous opponent without selecting a fake rematch market", async () => {
+    const opponent = `0x${"1".repeat(40)}` as Address;
+    window.history.replaceState({}, "", `/?inviteWallet=${opponent}#league-identity`);
+
+    render(<SocialPanel
+      config={{
+        supabaseUrl: "https://project.supabase.co",
+        supabasePublishableKey: "sb_publishable_example",
+      }}
+      configError={null}
+      runtime={{} as never}
+      round={undefined}
+      connected={false}
+      onConnect={async () => null}
+    />);
+
+    expect((await screen.findByLabelText("Friend’s wallet")).getAttribute("value")).toBe(opponent);
+    expect(screen.getByText(/Previous opponent ready/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "No live round to challenge" })).toBeTruthy();
+  });
+
   it("revalidates the exact Event Contract before accepting a challenge", async () => {
     const creator = `0x${"1".repeat(40)}` as Address;
     const invitee = `0x${"2".repeat(40)}` as Address;
