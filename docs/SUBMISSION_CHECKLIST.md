@@ -39,7 +39,7 @@ buy a higher score.
 - [x] SDK/documentation feedback
 - [ ] Final two-to-three-minute demo video URL
 - [ ] Real two-wallet challenge comparison from invitation through settlement
-- [ ] Real Reown Project ID and mobile/QR acceptance evidence
+- [ ] Mobile/QR acceptance evidence — QR pairing is currently suspended; not claimed as supported
 - [x] Owner-approved MIT repository license
 - [x] Owner-approved Node 22 continuous-integration workflow
 
@@ -48,6 +48,11 @@ two-call activation is complete, but its separate terminal-comparison item stays
 unchecked until the shared Event Contract genuinely finalizes. The remaining
 items require owner-controlled accounts or publishing and must remain unchecked
 until completed.
+
+The README now leads with the redesigned production UI and explicitly separates
+the historical receipt screenshot from current product visuals. Browser-wallet
+connection is the supported demonstration path; do not demonstrate or promise
+the disabled QR connector. The final public video URL remains missing.
 
 ## Final DoraHacks pass
 

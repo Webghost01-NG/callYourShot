@@ -11,7 +11,23 @@ is temporarily disabled after repeated blank pairing panels; mobile/QR acceptanc
 is not claimed. A wallet's built-in browser may provide an injected connection,
 but must be tested separately. Re-enable QR only after an end-to-end acceptance run.
 
-![A genuine Call Your Shot receipt rebuilt from a real DreamDEX fill and finalized Event Contract](public/media/verified-receipt.png)
+![Current production UI: persistent desktop navigation, editorial introduction, and live DreamDEX workspace](public/media/production-workspace.png)
+
+## Try it in one minute
+
+1. Open the live app and select **Make a call** to inspect real markets without connecting.
+2. Connect a browser wallet on Somnia testnet, join the league, and review a call.
+   Wallet approval and the order are separate steps; only a verified fill counts.
+3. Open **Your record** for receipts and **League** for verified competition.
+
+**Release status:** the redesigned interface, receipt verification, and deterministic
+leaderboard coverage are live. The documented two-wallet challenge has both fills,
+but settlement and rematch acceptance are still pending. QR pairing is suspended.
+The final public demo video is not published yet; the linked runbook is not a video.
+
+The score records realized prediction performance, not proof of persistent human
+identity or conclusive forecasting skill. Ten settlements qualify a profile for
+ranking; they do not eliminate luck, correlated calls, or multiple-wallet selection.
 
 ## The 30-second pitch
 
@@ -53,6 +69,13 @@ the experience.
 
 The public receipt deliberately shows a losing call. It is genuine evidence,
 not a hand-picked success screen.
+
+<details>
+<summary>Historical receipt evidence (captured before the UI redesign)</summary>
+
+![Historical genuine receipt rebuilt from a real fill and finalized Event Contract](public/media/verified-receipt.png)
+
+</details>
 
 ## Verification architecture
 
