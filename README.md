@@ -57,7 +57,8 @@ flowchart LR
   C --> B[Real on-chain order book]
   B --> W[Wallet-reviewed<br/>approval + order]
   W --> F[Decoded OrderFilled]
-  F --> S[Finalized Event Contract<br/>+ oracle evidence]
+  F --> R[RPC receipt + exact order<br/>ownership and side proof]
+  R --> S[Finalized Event Contract<br/>+ oracle evidence]
   S --> P[Deterministic skill record]
   P --> L[Receipts, challenges,<br/>leaderboard]
   DB[(Supabase)] -. identity, invitations,<br/>candidate snapshots .-> L
@@ -87,6 +88,8 @@ Event Contracts:
   unavailable states;
 - exact fill attribution, permanent settlement lookup, void handling, and
   oracle/finalization links;
+- receipt-level reconstruction of every historical fill, including the exact
+  pool log, order IDs, quantity, price, owner, side, and chain timestamp;
 - runtime recovery across the two SDK-published Shannon RPC aliases without
   mixing partial endpoint snapshots.
 

@@ -314,17 +314,23 @@ export class BrowserDreamDexRuntime {
     const reconciler = new DreamDexProfileReconciler(
       connection.exchange.client,
       (marketId) => adapter.getSettlement(marketId),
-      async (marketId, blockNumber) => {
-        const module = SOMNIA_TESTNET_ADDRESSES.binaryModule;
-        if (!module) return null;
-        const logs = await connection.publicClient.getLogs({
-          address: module,
-          event: marketFinalizedEvent,
-          args: { marketId },
-          fromBlock: blockNumber,
-          toBlock: blockNumber,
-        });
-        return logs[0]?.transactionHash ?? null;
+      {
+        getTransactionReceipt: (hash) => connection.publicClient.getTransactionReceipt({ hash }),
+        getBlockTimestamp: async (blockNumber) => (
+          await connection.publicClient.getBlock({ blockNumber })
+        ).timestamp,
+        getFinalizationTransaction: async (marketId, blockNumber) => {
+          const module = SOMNIA_TESTNET_ADDRESSES.binaryModule;
+          if (!module) return null;
+          const logs = await connection.publicClient.getLogs({
+            address: module,
+            event: marketFinalizedEvent,
+            args: { marketId },
+            fromBlock: blockNumber,
+            toBlock: blockNumber,
+          });
+          return logs[0]?.transactionHash ?? null;
+        },
       },
     );
     return reconciler.reconcile(account, {
