@@ -3,6 +3,7 @@ import type { Address, Hex, WalletClient } from "viem";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
 import {
   assertPlanAuthorization,
+  assertWalletFunding,
   BrowserDreamDexRuntime,
   type OrderPlan,
 } from "../../src/app/runtime.js";
@@ -133,5 +134,36 @@ describe("reviewed order authorization", () => {
     expect(waitForTransactionReceipt).toHaveBeenCalledTimes(2);
     expect(reviewedRouteMarket).toHaveBeenCalledTimes(1);
     expect(activeRouteMarket).not.toHaveBeenCalled();
+  });
+});
+
+describe("wallet funding preflight", () => {
+  const funded = {
+    nativeBalance: 1n,
+    collateralBalance: 1_000_000n,
+    maximumCost: 990_000n,
+    collateralDecimals: 6,
+    collateralSymbol: "tUSDC",
+  };
+
+  it("allows a wallet with gas and enough market collateral", () => {
+    expect(() => assertWalletFunding(funded)).not.toThrow();
+  });
+
+  it("reports both missing gas and collateral with live token amounts", () => {
+    expect(() => assertWalletFunding({
+      ...funded,
+      nativeBalance: 0n,
+      collateralBalance: 0n,
+    })).toThrow(
+      "This wallet has no STT for Somnia network fees and has 0 tUSDC; this call requires up to 0.99 tUSDC.",
+    );
+  });
+
+  it("distinguishes missing gas from insufficient collateral", () => {
+    expect(() => assertWalletFunding({ ...funded, nativeBalance: 0n }))
+      .toThrow(/no STT for Somnia network fees/i);
+    expect(() => assertWalletFunding({ ...funded, collateralBalance: 250_000n }))
+      .toThrow("This wallet has 0.25 tUSDC; this call requires up to 0.99 tUSDC.");
   });
 });
