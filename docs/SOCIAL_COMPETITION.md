@@ -145,6 +145,23 @@ acceptance steps are in
   created or accepted. An unaccepted invitation may still contain the invited
   public wallet address until its creator cancels or deletes their account.
 
+### Testnet season and Sybil policy
+
+The current board is one continuous, prize-free Shannon testnet exhibition. A
+wallet becomes ranked only after ten settled, non-void calls made after its
+server-timestamped enrollment boundary. The boundary prevents importing a
+selectively successful pre-enrollment history, while equal per-call weighting
+prevents larger stakes from buying rank.
+
+One wallet still does not prove one person. A player can create several wallets
+and abandon weak profiles, so this MVP must not describe the board as
+Sybil-resistant or attach prizes to it. Any later rewarded season must define a
+fixed start/end, pin the formula version, reset eligibility at the season
+boundary, require an approved proof-of-person or allowlist policy, publish the
+minimum sample before play, and retain all eligible results rather than letting
+players selectively hide losses. Until those controls exist, the product claims
+verifiable wallet-level prediction records—not unique human identity.
+
 ## Public configuration
 
 The Vite client accepts only `VITE_SUPABASE_URL` and

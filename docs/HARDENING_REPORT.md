@@ -69,15 +69,16 @@ evidence.
 
 These cannot be honestly marked complete by automated fixtures:
 
-- a filled UP or DOWN call initiated from the React application by the wallet
-  owner;
 - wallet rejection, wrong-network recovery, account switching during review,
   and a live rollover in the target browser wallet;
-- desktop and mobile visual inspection, keyboard-only traversal, and browser
-  console/network inspection;
-- a deployed Supabase Web3 Auth login, anonymous reads, owner writes, and
-  cross-wallet RLS denials with real wallets;
-- a full timed judge rehearsal using an actually settled profile.
+- a final keyboard-only traversal and browser console/network inspection;
+- terminal comparison and rematch on the already activated two-wallet challenge
+  after its exact Event Contract finalizes;
+- a full timed judge rehearsal using the verified 11-settlement profile.
+
+Real React-originated fills, desktop/mobile rendering, Web3 authentication,
+anonymous reads, owner writes, invited-wallet acceptance, two independent
+challenge-market fills, and qualified leaderboard profiles have been exercised.
 
 ## Remaining external risks
 
