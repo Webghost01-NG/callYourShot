@@ -6,6 +6,11 @@
 [**Inspect a genuine settled receipt**](https://call-your-shot-six.vercel.app/?receiptWallet=0x6CeD8D6Bad8Dfd2e60BCEA116fE74548f959f1F2&receiptMarket=0x00000000000000000000000000000000000000000000000000000000000127a9) ·
 [**Follow the 3-minute demo**](docs/DEMO_RUNBOOK.md)
 
+Connection availability: use an injected browser wallet. WalletConnect QR pairing
+is temporarily disabled after repeated blank pairing panels; mobile/QR acceptance
+is not claimed. A wallet's built-in browser may provide an injected connection,
+but must be tested separately. Re-enable QR only after an end-to-end acceptance run.
+
 ![A genuine Call Your Shot receipt rebuilt from a real DreamDEX fill and finalized Event Contract](public/media/verified-receipt.png)
 
 ## The 30-second pitch

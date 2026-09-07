@@ -151,7 +151,7 @@ describe("live round resilience", () => {
 
     expect(screen.getByRole("dialog", { name: "Choose your wallet" })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Browser wallet.*wallet extension/i })).toBeTruthy();
-    expect(screen.getByText(/Mobile\/QR connection is not configured/i)).toBeTruthy();
+    expect(screen.getByText(/QR pairing is temporarily unavailable/i)).toBeTruthy();
 
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("dialog", { name: "Choose your wallet" })).toBeNull();
@@ -226,7 +226,7 @@ describe("live round resilience", () => {
     render(<App />);
 
     const sharedHeading = await screen.findByText("Direct verified receipt");
-    const heroHeading = screen.getByRole("heading", { name: /Call the outcome/i });
+    const heroHeading = screen.getByRole("heading", { name: /Have a view/i });
     expect(sharedHeading.compareDocumentPosition(heroHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
