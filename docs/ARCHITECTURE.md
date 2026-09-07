@@ -18,9 +18,14 @@ wallet-bound SDK writer only through dependency injection.
 
 Issue #6 extends this boundary with database-free profile reconciliation. The
 adapter pages indexed account fills, filters binary markets to the configured
-operator and venue, and requires on-chain market state plus the permanent
-settlement record before a result can score. The pure profile reducer applies
-`CYS-EDGE-v1`, streak,
+operator and venue, then treats each indexed fill as a candidate only. Somnia
+RPC must return the successful transaction receipt and the exact verified-pool
+`OrderFilled` log at its claimed block/log position. The decoded order IDs,
+quantity, and price must match. The participant order's placement receipt must
+also prove the wallet owner and `BinaryOrderPlaced` side, and the enrollment
+boundary uses the chain block timestamp rather than an indexed timestamp. The
+permanent settlement record remains mandatory before a result can score. The
+pure profile reducer applies `CYS-EDGE-v1`, streak,
 accuracy, fee-aware return, and drawdown rules. See
 [PROFILE_RECONCILIATION.md](PROFILE_RECONCILIATION.md).
 
@@ -84,8 +89,9 @@ The core does not select or depend on:
 - Pool addresses are runtime bindings and never durable market identities.
 - Transaction inclusion is not a fill; decoded fill events are mandatory.
 - The permanent settlement record and outcome balances determine claimability.
-- Indexed fills discover profile candidates; on-chain finalization and the
-  permanent settlement record determine scored outcomes.
+- Indexed fills and orders only discover profile candidates. RPC receipts prove
+  the exact fill, participant ownership, binary side, and timestamp; on-chain
+  finalization and the permanent settlement record determine scored outcomes.
 - Wallets sign outside the core. No private key crosses this boundary.
 - Supabase Web3 Auth proves social-write ownership; database RPCs derive the
   address from the server-side identity rather than browser input.

@@ -55,17 +55,23 @@ const reconciler = new DreamDexProfileReconciler(
     if (!settlement) throw new Error("permanent settlement record was not found");
     return settlement;
   },
-  async (marketId, blockNumber) => {
-    const module = SOMNIA_TESTNET_ADDRESSES.binaryModule;
-    if (!module) return null;
-    const logs = await publicClient.getLogs({
-      address: module,
-      event: marketFinalizedEvent,
-      args: { marketId },
-      fromBlock: blockNumber,
-      toBlock: blockNumber,
-    });
-    return logs[0]?.transactionHash ?? null;
+  {
+    getTransactionReceipt: (hash) => publicClient.getTransactionReceipt({ hash }),
+    getBlockTimestamp: async (blockNumber) => (
+      await publicClient.getBlock({ blockNumber })
+    ).timestamp,
+    getFinalizationTransaction: async (marketId, blockNumber) => {
+      const module = SOMNIA_TESTNET_ADDRESSES.binaryModule;
+      if (!module) return null;
+      const logs = await publicClient.getLogs({
+        address: module,
+        event: marketFinalizedEvent,
+        args: { marketId },
+        fromBlock: blockNumber,
+        toBlock: blockNumber,
+      });
+      return logs[0]?.transactionHash ?? null;
+    },
   },
 );
 

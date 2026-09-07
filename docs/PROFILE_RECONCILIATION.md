@@ -1,6 +1,8 @@
 # Verified profile reconciliation
 
 Status: approved by the product owner for GitHub Issue #6 on 2026-09-04.
+Receipt-authoritative historical verification was approved for Issue #73 on
+2026-09-07.
 
 ## Database-free boundary
 
@@ -9,17 +11,27 @@ connected wallet's profile is rebuilt from DreamDEX on each load:
 
 1. page the wallet's complete indexed fill history at a fixed time boundary;
 2. keep only binary markets from the configured operator and venue;
-3. attribute each fill to the wallet as maker or taker;
-4. retain directional buys and lock the earliest order for each `marketId`;
-5. aggregate partial fills from that same order;
-6. verify market state against the chain and, once finalized, require the
+3. treat indexed maker/taker attribution as an untrusted candidate;
+4. fetch the candidate transaction receipt from Somnia RPC and require one
+   successful `OrderFilled` log at the exact block/log position from the
+   verified market pool;
+5. match both order IDs, quantity, and fill price to the decoded log;
+6. fetch the participant order and its placement receipt, then independently
+   prove the wallet owner and `BinaryOrderPlaced` side;
+7. derive the fill time from the chain block and apply the enrollment boundary;
+8. retain directional buys and lock the earliest order for each `marketId`;
+9. aggregate partial fills from that same order;
+10. verify market state against the chain and, once finalized, require the
    permanent DreamDEX settlement record;
-7. calculate the formula-versioned profile from those immutable inputs.
+11. calculate the formula-versioned profile from those immutable inputs.
 
-Indexer data discovers and labels evidence. It cannot finalize a market or
-select a winner. The on-chain market plus permanent settlement record are the
-authority for those facts. Any later cache or database remains disposable and
-must reproduce this result.
+Indexer data discovers and labels evidence. It cannot prove that a fill
+occurred, attribute the participant order, set the enrollment timestamp,
+finalize a market, or select a winner. RPC receipts, block timestamps, the
+on-chain market, and the permanent settlement record are authoritative for
+those facts. Receipt, block, and order reads are cached only for the lifetime of
+one rebuild, and no more than four markets are reconciled concurrently. Any
+later cache or database remains disposable and must reproduce this result.
 
 ## Metrics
 
@@ -42,15 +54,18 @@ call.
 
 ## Evidence and failure behavior
 
-Every displayed call links its indexed fill transaction. A finalized result
-also links the indexed `Finalized` status transaction and oracle-answer
-transaction when the indexer exposes them.
+Every displayed call has a transaction whose successful receipt was fetched
+from RPC and whose exact verified-pool `OrderFilled` log was decoded. Its
+participant order placement also proves the wallet and binary side. A finalized
+result additionally links the indexed `Finalized` status transaction and
+oracle-answer transaction when the indexer exposes them.
 
 Missing transaction-link metadata does not overrule a chain-verified permanent
 settlement; the interface explicitly labels that link unavailable. By contrast,
-missing or contradictory fill attribution, market state, or settlement truth
-excludes the affected market and marks the profile incomplete. A paging safety
-limit fails the whole rebuild instead of silently publishing partial history.
+missing or contradictory receipt, fill, order ownership, binary side, chain
+timestamp, market state, or settlement truth excludes the affected market and
+marks the profile incomplete. A paging safety limit fails the whole rebuild
+instead of silently publishing partial history.
 
 No profile values in tests are presented as live data. Test fixtures exist only
 to prove deterministic calculation and failure behavior.
