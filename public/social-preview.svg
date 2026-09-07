@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Call Your Shot</title>
+  <desc id="desc">Make a real DreamDEX call and let Somnia keep score.</desc>
+  <defs>
+    <radialGradient id="glow" cx="78%" cy="25%" r="70%">
+      <stop offset="0" stop-color="#baff3c" stop-opacity=".13"/>
+      <stop offset="1" stop-color="#baff3c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="line" x1="0" x2="1">
+      <stop stop-color="#baff3c"/>
+      <stop offset="1" stop-color="#baff3c" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#080b0f"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect x="72" y="62" width="66" height="66" rx="17" fill="#baff3c"/>
+  <circle cx="102" cy="99" r="15" fill="none" stroke="#080b0f" stroke-width="6"/>
+  <circle cx="102" cy="99" r="5" fill="#080b0f"/>
+  <path d="m106 95 20-20m-12 0h12v12" fill="none" stroke="#080b0f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="158" y="91" fill="#f5f7f2" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700">Call Your Shot</text>
+  <text x="158" y="118" fill="#87908a" font-family="monospace" font-size="13" letter-spacing="2">PREDICTION SKILL LEAGUE</text>
+  <text x="72" y="222" fill="#baff3c" font-family="monospace" font-size="16" font-weight="700" letter-spacing="4">PROOF OVER PROMISES</text>
+  <text x="72" y="312" fill="#f5f7f2" font-family="Arial, Helvetica, sans-serif" font-size="68" font-weight="700">Make one call.</text>
+  <text x="72" y="390" fill="#f5f7f2" font-family="Arial, Helvetica, sans-serif" font-size="68" font-weight="700">Let the chain keep score.</text>
+  <text x="72" y="454" fill="#a2aaa5" font-family="Arial, Helvetica, sans-serif" font-size="23">Real DreamDEX fills · Somnia settlement · Bankroll-neutral ranking</text>
+  <rect x="72" y="508" width="1056" height="1" fill="url(#line)"/>
+  <text x="72" y="558" fill="#f5f7f2" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700">SIMPLE ON TOP.</text>
+  <text x="253" y="558" fill="#baff3c" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700">VERIFIABLE UNDERNEATH.</text>
+  <text x="1128" y="558" text-anchor="end" fill="#87908a" font-family="monospace" font-size="15">DREAMDEX × SOMNIA</text>
+</svg>
