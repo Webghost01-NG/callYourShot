@@ -14,6 +14,7 @@ const runtimeMocks = vi.hoisted(() => ({
   sendPlan: vi.fn(),
   loadProfile: vi.fn(),
   loadPublicProfile: vi.fn(),
+  getProvider: vi.fn(),
   close: vi.fn(),
 }));
 
@@ -25,6 +26,7 @@ const socialRepositoryMocks = vi.hoisted(() => ({
 
 const configMocks = vi.hoisted(() => ({
   socialEnabled: false,
+  walletClientReady: true,
 }));
 
 vi.mock("../../src/app/config.js", () => ({
@@ -48,13 +50,15 @@ vi.mock("wagmi", () => ({
   useAccount: () => ({
     address: account,
     chainId: 50_312,
-    connector: { getProvider: vi.fn() },
+    connector: { id: "walletConnect", getProvider: runtimeMocks.getProvider },
     isConnected: true,
   }),
   useConnect: () => ({ connectors: [], connectAsync: vi.fn(), isPending: false }),
   useDisconnect: () => ({ disconnect: vi.fn() }),
   useSwitchChain: () => ({ switchChainAsync: vi.fn() }),
-  useWalletClient: () => ({ data: { account: { address: account } } as WalletClient }),
+  useWalletClient: () => ({ data: configMocks.walletClientReady
+    ? { account: { address: account }, chain: { id: 50_312 } } as WalletClient
+    : undefined }),
 }));
 
 vi.mock("../../src/app/runtime.js", () => ({
@@ -146,6 +150,7 @@ async function openWalletReview() {
 describe("wallet transaction lifecycle", () => {
   beforeEach(() => {
     configMocks.socialEnabled = false;
+    configMocks.walletClientReady = true;
     runtimeMocks.loadMarkets.mockReset().mockResolvedValue({
       rounds: [round()],
       rejectedCount: 0,
@@ -159,6 +164,7 @@ describe("wallet transaction lifecycle", () => {
       evidenceGaps: [],
       profile: { state: "empty", skillScore: null, settledCount: 0, rounds: [] },
     });
+    runtimeMocks.getProvider.mockReset();
     runtimeMocks.close.mockReset();
     socialRepositoryMocks.authenticatedWallet.mockReset().mockResolvedValue(account);
     socialRepositoryMocks.listProfiles.mockReset().mockResolvedValue([]);
@@ -235,5 +241,33 @@ describe("wallet transaction lifecycle", () => {
 
     expect(await screen.findByRole("button", { name: "Confirm in wallet" })).toBeTruthy();
     expect(runtimeMocks.prepareOrder).toHaveBeenCalledTimes(1);
+  }, 10_000);
+
+  it("uses and retains the connector signer when Wagmi wallet-client hydration is delayed", async () => {
+    configMocks.walletClientReady = false;
+    runtimeMocks.getProvider.mockResolvedValue({
+      request: vi.fn(),
+      on: vi.fn(),
+      removeListener: vi.fn(),
+    });
+    runtimeMocks.sendPlan.mockResolvedValue({
+      transactionHash: `0x${"b".repeat(64)}`,
+      fills: [{ takerOrderId: 1n, makerOrderId: 2n, quantity: 1_000_000n, price: 620_000n }],
+      totalQuantity: 1_000_000n,
+      weightedPriceNumerator: 620_000_000_000n,
+      averageFillPrice: 620_000n,
+    });
+    render(<App />);
+
+    await openWalletReview();
+
+    expect(runtimeMocks.getProvider).toHaveBeenCalledWith({ chainId: 50_312 });
+    expect(runtimeMocks.prepareOrder).toHaveBeenCalledWith(expect.objectContaining({
+      walletClient: expect.objectContaining({
+        account: expect.objectContaining({ address: account }),
+        chain: expect.objectContaining({ id: 50_312 }),
+      }),
+    }));
+    expect(runtimeMocks.sendPlan).toHaveBeenCalledTimes(1);
   }, 10_000);
 });
