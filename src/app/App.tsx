@@ -29,7 +29,6 @@ import { MarketVerificationTrail } from "./MarketVerificationTrail.js";
 import { WalletChooser } from "./WalletChooser.js";
 import type { EndpointDiagnostics } from "./endpointFailover.js";
 import type { BrowserDreamDexRuntime, LiveRound, OrderPlan } from "./runtime.js";
-import { walletConnectionEnvironment } from "./walletEnvironment.js";
 import type {
   ConnectedWallet,
   LeagueEnrollmentSnapshot,
@@ -609,10 +608,11 @@ export function App() {
             <span className="brand-copy"><strong>Call Your Shot</strong><small>Prediction skill league</small></span>
           </a>
           <nav className="primary-nav" aria-label="Primary navigation">
-            <a href="#arena">Make a call</a>
-            <a href="#record">Your record</a>
-            <a href="#league">League</a>
+            <a href="#arena"><span aria-hidden="true">↗</span>Make a call</a>
+            <a href="#record"><span aria-hidden="true">◎</span>Your record</a>
+            <a href="#league"><span aria-hidden="true">⚑</span>League</a>
           </nav>
+          <div className="rail-note"><span className="micro-label">Built on evidence</span><p>Your call.<br />Your receipt.<br />Your reputation.</p><small>Powered by DreamDEX<br />on Somnia testnet</small></div>
           <div className="header-actions">
             <span className="network-badge"><i />Somnia testnet</span>
             <button className="wallet-button" onClick={() => isConnected ? disconnect() : void requestWalletConnection()} disabled={isConnecting}>
@@ -630,7 +630,6 @@ export function App() {
             name: connector.name,
             type: connector.type,
           }))}
-          configurationError={walletConnectionEnvironment.error}
           connecting={isConnecting}
           onChoose={(connectorId) => void connectWallet(connectorId)}
           onClose={closeWalletChooser}
@@ -640,9 +639,10 @@ export function App() {
       <main>
         {socialRoute.kind !== "league" && socialPanel}
         <section className="hero">
+          <div className="hero-masthead"><span>THE PREDICTION CLUB</span><span>Independent calls. Public outcomes.</span></div>
           <div className="hero-copy">
-            <p className="eyebrow"><span className="live-dot" />The on-chain prediction league</p>
-            <h1>Call the outcome.<br /><em>Let the chain keep score.</em></h1>
+            <p className="eyebrow">Conviction meets evidence</p>
+            <h1>Have a view?<br /><em>Put it on record.</em></h1>
             <p>Choose a live DreamDEX event, set the most you can lose, and build a public record from real fills—not screenshots or self-reported wins.</p>
             <div className="hero-actions">
               <a className="primary-link" href="#arena">Enter the live arena <span aria-hidden="true">↘</span></a>
@@ -655,7 +655,7 @@ export function App() {
             </ul>
           </div>
           <aside className="hero-proof" aria-label="How a prediction becomes verified">
-            <div className="proof-header"><span>Proof pipeline</span><b>LIVE</b></div>
+            <div className="proof-header"><span>From opinion to evidence</span><b>HOW IT WORKS</b></div>
             <div className="proof-step"><b>01</b><div><strong>You make the call</strong><span>Choose YES or NO and cap your risk.</span></div></div>
             <div className="proof-line" />
             <div className="proof-step"><b>02</b><div><strong>DreamDEX fills it</strong><span>The trade—not a button click—creates the receipt.</span></div></div>
@@ -664,6 +664,8 @@ export function App() {
             <div className="proof-footer"><span className="proof-seal">✓</span><span><strong>Proof over promises</strong><small>Every counted call links back to chain evidence.</small></span></div>
           </aside>
         </section>
+
+        <div className="workspace-banner"><span><i className="live-dot" />Your trading workspace</span><span>Real Event Contracts · No simulated trades</span></div>
 
         <section className="arena-section" id="arena" aria-labelledby="arena-title">
           <div className="section-intro">

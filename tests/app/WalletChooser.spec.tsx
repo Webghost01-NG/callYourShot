@@ -34,7 +34,7 @@ describe("WalletChooser", () => {
       onClose={onClose}
     />);
 
-    expect(screen.getByText(/Mobile\/QR connection is not configured/i)).toBeTruthy();
+    expect(screen.getByText(/QR pairing is temporarily unavailable/i)).toBeTruthy();
     await userEvent.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledTimes(1);
   });

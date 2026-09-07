@@ -104,7 +104,7 @@ export function WalletChooser({
         </div>
         {!hasMobileChoice && (
           <p className="wallet-mobile-unavailable" role="status">
-            {configurationError ?? "Mobile/QR connection is not configured for this deployment yet."}
+            {configurationError ?? "QR pairing is temporarily unavailable. Use a browser wallet extension, or open this site in your wallet’s built-in browser."}
           </p>
         )}
       </section>
