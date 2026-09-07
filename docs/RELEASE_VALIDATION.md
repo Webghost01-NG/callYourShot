@@ -69,6 +69,7 @@ project and origin allowlist are owner-validated.
 | Snapshot schema deployment | Pass | Migration `202609060001` was the only pending migration, applied successfully, and the linked `private`/`public` schema lint returned no errors |
 | Anonymous snapshot reads | Pass | The deployed `league_score_snapshots` REST relation returned HTTP 200 through the browser-safe publishable key |
 | Bounded board regression | Pass | Automated tests enforce at most 24 DreamDEX wallet rebuilds per refresh and visible enrollment coverage |
+| Lagging-indexer discovery recovery | Pass | With the official indexer about 10,500 blocks behind both verified RPCs, the read-only live probe chain-verified four current BTC/ETH Event Contracts and read every real order book; no stale row was trusted as authority |
 
 The visual checks found no clipped primary content at either viewport. The
 no-market snapshot could not exercise the prediction form's keyboard path or a
@@ -76,13 +77,14 @@ wallet transaction, so those are not marked complete here.
 
 ## Current external dependency risk
 
-During the latest owner-acceptance attempt, the DreamDEX indexer returned six
-future BTC/ETH markets for the trusted operator and venue, but on-chain
-verification failed through both the configured and currently documented
-Somnia testnet WebSocket endpoints. The deployed application correctly reached
-its bounded unavailable state. This is recorded as an intermittent upstream or
-runner-network blocker; it is not represented as a successful trading test and
-the public RPC configuration was not changed without verified recovery.
+On 2026-09-07 the official DreamDEX indexer reported block `481827445` while
+the two verified Shannon HTTP RPCs reported `481837968` and `481837973`. The old
+symmetric 3,000-block guard rejected discovery before candidate verification.
+Issue #60 corrects that availability failure: behind-RPC indexer rows may only
+nominate bounded candidates, every candidate is still checked against current
+chain state and a real book, and the measured lag is visible. An indexer
+materially ahead of the selected RPC still fails closed. This does not claim a
+successful live trade or hide upstream lag.
 
 ## Outstanding owner-operated acceptance
 

@@ -33,10 +33,14 @@ describe("verified endpoint failover", () => {
         blockHeight: 100_000,
         numEventsProcessed: 1,
       },
-    })).toMatchObject({ endpointId: "somnia-infrastructure", skewBlocks: 50n });
+    })).toMatchObject({
+      endpointId: "somnia-infrastructure",
+      skewBlocks: 50n,
+      indexerLagging: false,
+    });
   });
 
-  it("rejects a wrong chain or incoherent snapshot", () => {
+  it("rejects a wrong chain or an indexer materially ahead of RPC", () => {
     expect(() => assertEndpointHealth({
       bundle: bundles[0]!,
       expectedChainId: 50_312,
@@ -48,14 +52,33 @@ describe("verified endpoint failover", () => {
       bundle: bundles[0]!,
       expectedChainId: 50_312,
       rpcChainId: 50_312,
-      rpcBlock: MAX_ENDPOINT_SNAPSHOT_SKEW_BLOCKS + 1n,
+      rpcBlock: 0n,
       indexerStatus: {
         chainId: 50_312,
-        latestProcessedBlock: 0,
-        blockHeight: 0,
+        latestProcessedBlock: Number(MAX_ENDPOINT_SNAPSHOT_SKEW_BLOCKS + 1n),
+        blockHeight: Number(MAX_ENDPOINT_SNAPSHOT_SKEW_BLOCKS + 1n),
         numEventsProcessed: 1,
       },
-    })).toThrow(/too far apart/i);
+    })).toThrow(/materially ahead/i);
+  });
+
+  it("lets lagging indexer candidates reach current on-chain verification", () => {
+    expect(assertEndpointHealth({
+      bundle: bundles[0]!,
+      expectedChainId: 50_312,
+      rpcChainId: 50_312,
+      rpcBlock: 110_501n,
+      indexerStatus: {
+        chainId: 50_312,
+        latestProcessedBlock: 100_000,
+        blockHeight: 100_000,
+        numEventsProcessed: 1,
+      },
+    })).toMatchObject({
+      endpointId: "somnia-infrastructure",
+      skewBlocks: 10_501n,
+      indexerLagging: true,
+    });
   });
 
   it("moves to the next complete bundle after a bounded failure", async () => {

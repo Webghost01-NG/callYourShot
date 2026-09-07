@@ -46,9 +46,12 @@ only values already returned and reconciled by the runtime.
 
 Issue #46 introduces whole-bundle read recovery across the two HTTP/WebSocket
 aliases shipped by the official Shannon chain definition. Before discovery, a
-bundle must return chain ID 50312 and a DreamDEX indexer snapshot within the
-documented skew bound. A failed bundle is replaced as one unit, preventing an
-indexer from being silently combined with a different in-flight chain read.
+bundle must return chain ID 50312. A DreamDEX indexer materially ahead of that
+RPC is rejected; a behind-RPC indexer may only nominate candidates, with its lag
+shown in the UI. Every nominated market is then checked against current chain
+identity, status, expiry, constraints, and its real order book. A failed bundle
+is replaced as one unit, preventing an indexer from being silently combined
+with a different in-flight chain read.
 Once a call enters review, automatic discovery is blocked and its runtime route
 remains pinned through preflight, submission, receipt, and fill decoding. See
 [ENDPOINT_RECOVERY.md](ENDPOINT_RECOVERY.md).
