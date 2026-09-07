@@ -107,6 +107,7 @@ describe("live round resilience", () => {
         rpcBlock: 100_000n,
         indexerBlock: 99_950n,
         skewBlocks: 50n,
+        indexerLagging: false,
         failedAttempts: 1,
       },
     });
@@ -118,6 +119,27 @@ describe("live round resilience", () => {
     expect(lower.getAttribute("aria-pressed")).toBe("false");
     expect(screen.getByText("Dream RPC").closest("p")?.textContent)
       .toMatch(/skew 50 blocks.*recovered after 1 failed route/i);
+  });
+
+  it("labels a lagging indexer while preserving per-market chain verification", async () => {
+    runtimeMocks.loadMarkets.mockResolvedValue({
+      rounds: [liveRound(BigInt(Math.floor(Date.now() / 1_000) + 900))],
+      rejectedCount: 0,
+      truncated: false,
+      endpoint: {
+        endpointId: "somnia-infrastructure",
+        endpointLabel: "Somnia infrastructure",
+        rpcBlock: 110_501n,
+        indexerBlock: 100_000n,
+        skewBlocks: 10_501n,
+        indexerLagging: true,
+        failedAttempts: 0,
+      },
+    });
+    render(<App />);
+
+    expect(await screen.findByText(/indexer behind RPC by 10501 blocks/i)).toBeTruthy();
+    expect(screen.getByText(/every market rechecked on-chain/i)).toBeTruthy();
   });
 
   it("opens an explicit wallet chooser from the header connection action", async () => {

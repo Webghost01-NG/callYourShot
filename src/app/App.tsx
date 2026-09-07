@@ -639,7 +639,9 @@ export function App() {
               </div>
               {endpointDiagnostics && <p className="endpoint-diagnostics" role="status">
                 <span aria-hidden="true">✓</span>
-                <span><strong>{endpointDiagnostics.endpointLabel}</strong> · verified Shannon route · indexer/RPC skew {endpointDiagnostics.skewBlocks.toString()} blocks{endpointDiagnostics.failedAttempts > 0 ? ` · recovered after ${endpointDiagnostics.failedAttempts} failed route` : ""}</span>
+                <span><strong>{endpointDiagnostics.endpointLabel}</strong> · verified Shannon route · {endpointDiagnostics.indexerLagging
+                  ? `indexer behind RPC by ${endpointDiagnostics.skewBlocks.toString()} blocks · every market rechecked on-chain`
+                  : `indexer/RPC skew ${endpointDiagnostics.skewBlocks.toString()} blocks`}{endpointDiagnostics.failedAttempts > 0 ? ` · recovered after ${endpointDiagnostics.failedAttempts} failed route` : ""}</span>
               </p>}
               {marketNotice && <p className="market-notice">{marketNotice}</p>}
             </section>

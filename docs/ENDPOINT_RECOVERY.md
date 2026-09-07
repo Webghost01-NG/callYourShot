@@ -17,16 +17,22 @@ Before a route can return a live board, the runtime requires:
 
 1. the HTTP RPC to report Shannon chain ID `50312`;
 2. the DreamDEX indexer to return Shannon sync metadata;
-3. the absolute difference between the HTTP head and the indexer's processed
-   block to be no more than 3,000 blocks;
+3. an indexer more than 3,000 blocks ahead of the HTTP head to be rejected as an
+   incoherent route; a lagging indexer remains a bounded discovery source and
+   its measured lag is shown explicitly;
 4. indexed candidates to pass the existing on-chain identity, status, expiry,
    pool, collateral, decimals, and outcome-token checks through that route's
    WebSocket client;
 5. at least one verified market to have a readable real order book.
 
-At Shannon's SDK-declared approximate 100 ms block time, the 3,000-block bound
-is approximately five minutes. It is a safety ceiling, not a freshness claim;
-the UI reports the observed block skew.
+At Shannon's SDK-declared approximate 100 ms block time, the 3,000-block
+ahead-of-RPC bound is approximately five minutes. A behind-RPC indexer cannot
+authorize a market: each returned candidate must still pass current on-chain
+identity, status, expiry, pool, token, constraint, and readable-book checks.
+Old candidates are rejected by those checks, and a stale indexer that has not
+seen any current candidate reaches the honest no-live-market state. This keeps
+indexer lag an availability signal instead of turning it into authority over
+current chain state.
 
 Each bundle receives an eight-second deadline. If a read attempt fails or times
 out, the runtime tries the other complete bundle once. The total remains inside

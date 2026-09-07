@@ -10,6 +10,7 @@ export interface EndpointDiagnostics {
   rpcBlock: bigint;
   indexerBlock: bigint;
   skewBlocks: bigint;
+  indexerLagging: boolean;
   failedAttempts: number;
 }
 
@@ -32,11 +33,12 @@ export function assertEndpointHealth(input: {
     throw new Error("The official DreamDEX indexer has no usable Shannon sync status.");
   }
   const indexerBlock = BigInt(indexerBlockNumber);
-  const skewBlocks = input.rpcBlock >= indexerBlock
+  const indexerLagging = input.rpcBlock >= indexerBlock;
+  const skewBlocks = indexerLagging
     ? input.rpcBlock - indexerBlock
     : indexerBlock - input.rpcBlock;
-  if (skewBlocks > MAX_ENDPOINT_SNAPSHOT_SKEW_BLOCKS) {
-    throw new Error("The DreamDEX indexer and Somnia RPC are too far apart for a coherent snapshot.");
+  if (!indexerLagging && skewBlocks > MAX_ENDPOINT_SNAPSHOT_SKEW_BLOCKS) {
+    throw new Error("The DreamDEX indexer is materially ahead of the Somnia RPC.");
   }
   return {
     endpointId: input.bundle.id,
@@ -44,6 +46,7 @@ export function assertEndpointHealth(input: {
     rpcBlock: input.rpcBlock,
     indexerBlock,
     skewBlocks,
+    indexerLagging: indexerLagging && skewBlocks > MAX_ENDPOINT_SNAPSHOT_SKEW_BLOCKS,
   };
 }
 
