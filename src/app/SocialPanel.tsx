@@ -212,6 +212,7 @@ export function SocialPanel({
   const [receiptError, setReceiptError] = useState<string>();
   const boardCoverage = useRef<BoardCoverageCycle>(emptyCoverageCycle());
   const boardRequest = useRef(0);
+  const [autoAdvance, setAutoAdvance] = useState(true);
 
   const loadBoard = useCallback(async () => {
     if (!repository || !runtime) return;
@@ -593,6 +594,12 @@ export function SocialPanel({
           : challenge.creatorWallet,
       )
     : undefined;
+  useEffect(() => {
+    if (!autoAdvance || state !== "ready" || !boardDiagnostics || boardDiagnostics.cycleComplete) return;
+    const timer = window.setTimeout(() => { void loadBoard(); }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [autoAdvance, state, boardDiagnostics, loadBoard]);
+
   const sharedRoute = route.kind !== "league";
   const heading = route.kind === "challenge"
     ? {
@@ -644,6 +651,11 @@ export function SocialPanel({
       </div>
 
       {receiptCard}
+      <p className="market-notice">Scores describe realized prediction performance, not proven forecasting skill or unique human identity. Ten settlements qualify a profile; they do not remove luck or multiple-wallet selection.</p>
+      {boardDiagnostics && !boardDiagnostics.cycleComplete && <div className="market-notice" role="status">
+        <span>{autoAdvance ? "Continuing verification automatically, one bounded cohort at a time." : "Automatic verification paused. Use Verify next cohort to continue manually."}</span>{" "}
+        <button className="secondary compact" onClick={() => setAutoAdvance((value) => !value)}>{autoAdvance ? "Pause automatic verification" : "Resume automatic verification"}</button>
+      </div>}
 
       {route.kind === "challenge" && (
         <article className="share-card">

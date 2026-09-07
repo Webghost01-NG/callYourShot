@@ -1,5 +1,11 @@
 # Deterministic leaderboard coverage and evidence snapshots
 
+The UI advances automatically to the next cohort after a 1.5-second pause,
+while preserving the 24-profile per-cohort bound. Users may pause/resume or
+advance manually. Completion stops automatic reads; failures do not trigger
+an endless retry loop. Reload still restarts the page-local coverage cycle.
+This removes repeated clicking, not the underlying RPC cost of a large league.
+
 Issue #78 removes owner-published performance claims from leaderboard membership
 selection. The browser still bounds expensive DreamDEX reconstruction, but it
 now scans a deterministic enrollment sequence with explicit coverage guarantees.
