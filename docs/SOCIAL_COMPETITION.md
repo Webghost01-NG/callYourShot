@@ -103,16 +103,22 @@ than presenting an unstable early score as a rank. Empty profiles may show
 enrollment activity but have no score; no simulated player or outcome is added.
 
 The public client pages enrollments and reconciles at most three wallets
-concurrently to avoid an uncontrolled indexer burst. Each refresh verifies at
-most 24 snapshot-selected and discovery wallets, and states that coverage in
-the UI. It still fails closed if enrollment storage exceeds its 1,000-profile
-safety limit. Candidate snapshots are never ranked directly; exact DreamDEX
-reconciliation replaces or rejects their values. See
+concurrently to avoid an uncontrolled indexer burst. Each refresh verifies the
+next deterministic cohort of at most 24 wallets, ordered by enrollment time and
+wallet address. Verified results accumulate through the active coverage cycle,
+and every enrollment is attempted within a finite number of cohort refreshes.
+It still fails closed if enrollment storage exceeds its 1,000-profile safety
+limit. Owner-published snapshots never choose cohort membership or rank; they
+are compared only after exact DreamDEX reconciliation. See
 [LEADERBOARD_SNAPSHOTS.md](LEADERBOARD_SNAPSHOTS.md). Provisional players are
 shown separately. Profiles with score-affecting
 fill, market, or settlement evidence gaps are counted as excluded, not silently
 published as valid low performers. Missing explorer-link metadata is labeled
 but does not overrule an otherwise complete on-chain settlement.
+
+The UI labels an incomplete cycle as a **Verified subset**. Whole-league
+language is used only after every enrollment reconciles successfully in the
+current cycle. A connected wallet does not receive a privileged shortlist slot.
 
 Challenge links contain a random database UUID. Result links contain only a
 public wallet address and DreamDEX `marketId`; the receiver rebuilds the result

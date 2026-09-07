@@ -58,7 +58,7 @@ project and origin allowlist are owner-validated.
 | Anonymous social mutation denial | Pass | `enroll_in_league` was denied with HTTP 401 and PostgreSQL code `42501` |
 | Supabase Web3 claim shape | Pass | Client and database read the verified identity from `identity_data.custom_claims`; wrong-network and obsolete flat claims are rejected |
 | Authenticated league enrollment | Pass | Owner-operated production check created wallet `0x2981…D196` as provisional profile `ghost` and persisted a display-name update |
-| Automated core/application suite | Pass | 65 Node tests and 81 Vitest tests passed on the recovery branch |
+| Automated core/application suite | Pass | 66 Node tests and 82 Vitest tests passed on the deterministic-coverage branch, with typecheck and production build |
 | TypeScript and production build | Pass | Typecheck and Vite production build completed on the release branch |
 | Dependency audit | Pass | `npm audit --omit=dev` reported zero vulnerabilities |
 | Production claim parser | Pass | The stable deployment returned HTTP 200 and its served social bundle contains the nested-claim parser |
@@ -68,7 +68,7 @@ project and origin allowlist are owner-validated.
 | Profile-check process lifecycle | Pass | The live command flushed its JSON report and exited with status 0 in approximately 16 seconds instead of retaining the SDK transport indefinitely |
 | Snapshot schema deployment | Pass | Migration `202609060001` was the only pending migration, applied successfully, and the linked `private`/`public` schema lint returned no errors |
 | Anonymous snapshot reads | Pass | The deployed `league_score_snapshots` REST relation returned HTTP 200 through the browser-safe publishable key |
-| Bounded board regression | Pass | Automated tests enforce at most 24 DreamDEX wallet rebuilds per refresh and visible enrollment coverage |
+| Fair bounded board regression | Pass | Automated tests enforce deterministic enrollment cohorts of at most 24, prove unverified score claims cannot change membership, and expose finite whole-league coverage progress |
 | Lagging-indexer discovery recovery | Pass | With the official indexer about 10,500 blocks behind both verified RPCs, the read-only live probe chain-verified four current BTC/ETH Event Contracts and read every real order book; no stale row was trusted as authority |
 
 On 2026-09-07, three fresh `BrowserDreamDexRuntime.loadMarkets()` runs exercised

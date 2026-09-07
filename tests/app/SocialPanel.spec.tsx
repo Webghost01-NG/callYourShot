@@ -67,7 +67,7 @@ describe("social competition panel", () => {
     expect(screen.getByText(/No sample players are shown/)).toBeTruthy();
   });
 
-  it("bounds each leaderboard refresh and discloses its enrollment coverage", async () => {
+  it("uses deterministic cohorts and discloses complete leaderboard coverage", async () => {
     const enrolledAt = "2026-09-06T12:00:00.000Z";
     repositoryMocks.listProfiles.mockResolvedValue(Array.from({ length: 30 }, (_, index) => ({
       id: `profile-${index}`,
@@ -76,6 +76,19 @@ describe("social competition panel", () => {
       enrolledAt,
       formulaVersion: "CYS-EDGE-v1" as const,
       updatedAt: enrolledAt,
+    })));
+    // Flood the old 18 snapshot slots with inflated claims for later wallets.
+    repositoryMocks.listScoreSnapshots.mockResolvedValue(Array.from({ length: 18 }, (_, index) => ({
+      profileId: `profile-${index + 12}`,
+      walletAddress: `0x${(index + 13).toString(16).padStart(40, "0")}`,
+      formulaVersion: "CYS-EDGE-v1",
+      state: "verified",
+      scoreNumerator: 100n,
+      scoreDenominator: 1n,
+      scoreMicros: 100_000_000,
+      settledCount: 999,
+      sourceBlock: 100n,
+      capturedAt: enrolledAt,
     })));
     const loadPublicProfile = vi.fn().mockResolvedValue({
       snapshotTimestampSec: 1_000n,
@@ -97,7 +110,42 @@ describe("social competition panel", () => {
 
     expect(await screen.findByText(/24 of 30 enrolled wallets checked/i)).toBeTruthy();
     expect(screen.getByText(/hard limit 24 per refresh/i)).toBeTruthy();
+    expect(screen.getByText(/cohort 1 of 2/i)).toBeTruthy();
+    expect(screen.getByText(/published score claims never choose membership/i)).toBeTruthy();
     expect(loadPublicProfile).toHaveBeenCalledTimes(24);
+    expect(loadPublicProfile.mock.calls.map(([wallet]) => wallet)).toEqual(
+      Array.from({ length: 24 }, (_, index) => `0x${(index + 1).toString(16).padStart(40, "0")}`),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Verify next cohort" }));
+
+    expect(await screen.findByText(/30 of 30 enrolled wallets checked/i)).toBeTruthy();
+    expect(screen.getByText("Whole-league verified leaderboard")).toBeTruthy();
+    expect(loadPublicProfile).toHaveBeenCalledTimes(30);
+    expect(new Set(loadPublicProfile.mock.calls.map(([wallet]) => wallet)).size).toBe(30);
+  });
+
+  it("keeps the board a subset when any enrolled wallet cannot be verified", async () => {
+    const enrolledAt = "2026-09-06T12:00:00.000Z";
+    repositoryMocks.listProfiles.mockResolvedValue([{
+      id: "failed-profile",
+      walletAddress: `0x${"1".repeat(40)}`,
+      displayName: null,
+      enrolledAt,
+      formulaVersion: "CYS-EDGE-v1",
+      updatedAt: enrolledAt,
+    }]);
+    const loadPublicProfile = vi.fn().mockRejectedValue(new Error("RPC unavailable"));
+    render(<SocialPanel
+      config={{ supabaseUrl: "https://project.supabase.co", supabasePublishableKey: "sb_publishable_example" }}
+      configError={null}
+      runtime={{ loadPublicProfile } as never}
+      connected={false}
+      onConnect={async () => null}
+    />);
+    expect(await screen.findByText(/1 profile was excluded/i)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Verified subset" })).toBeTruthy();
+    expect(screen.queryByText("Whole-league verified leaderboard")).toBeNull();
   });
 
   it("rebuilds a settled receipt directly from DreamDEX without Supabase or live liquidity", async () => {

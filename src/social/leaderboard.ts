@@ -3,7 +3,6 @@ import type { Rational } from "../core/profile.js";
 import type { LeagueProfile, LeagueScoreSnapshot } from "./model.js";
 
 export const MAX_BOARD_RECONCILIATIONS = 24;
-export const SNAPSHOT_CANDIDATE_SLOTS = 18;
 export const SNAPSHOT_STALE_AFTER_MS = 15 * 60_000;
 
 export interface VerifiedLeagueProfile {
@@ -16,9 +15,14 @@ export interface LeagueBoard {
   provisional: VerifiedLeagueProfile[];
 }
 
-export interface BoardCandidate {
-  enrollment: LeagueProfile;
-  snapshot?: LeagueScoreSnapshot;
+export interface BoardCandidateSelection {
+  candidates: LeagueProfile[];
+  cohortStart: number;
+  nextCohortStart: number;
+  cohortNumber: number;
+  cohortCount: number;
+  cycleComplete: boolean;
+  totalEnrollments: number;
 }
 
 function compareRational(left: Rational, right: Rational): number {
@@ -49,49 +53,44 @@ export function buildLeagueBoard(items: readonly VerifiedLeagueProfile[]): Leagu
   return { ranked, provisional };
 }
 
-function compareSnapshots(left: LeagueScoreSnapshot, right: LeagueScoreSnapshot): number {
-  if (left.state !== right.state) {
-    if (left.state === "verified") return -1;
-    if (right.state === "verified") return 1;
-  }
-  if (left.scoreMicros !== right.scoreMicros) {
-    return (right.scoreMicros ?? -1) - (left.scoreMicros ?? -1);
-  }
-  if (left.settledCount !== right.settledCount) return right.settledCount - left.settledCount;
-  return left.walletAddress.localeCompare(right.walletAddress);
+function compareEnrollments(left: LeagueProfile, right: LeagueProfile): number {
+  const time = left.enrolledAt.localeCompare(right.enrolledAt);
+  return time || left.walletAddress.toLowerCase().localeCompare(right.walletAddress.toLowerCase());
 }
 
 export function selectBoardCandidates(
   enrollments: readonly LeagueProfile[],
-  snapshots: readonly LeagueScoreSnapshot[],
-  preferredWallet?: string,
-): BoardCandidate[] {
-  const enrollmentByWallet = new Map(enrollments.map((item) => [item.walletAddress.toLowerCase(), item]));
-  const orderedSnapshots = [...snapshots].sort(compareSnapshots);
-  const selected = new Map<string, BoardCandidate>();
-  for (const snapshot of orderedSnapshots.slice(0, SNAPSHOT_CANDIDATE_SLOTS)) {
-    const enrollment = enrollmentByWallet.get(snapshot.walletAddress.toLowerCase());
-    if (enrollment) selected.set(enrollment.walletAddress.toLowerCase(), { enrollment, snapshot });
-  }
-
-  const snapshotByWallet = new Map(snapshots.map((item) => [item.walletAddress.toLowerCase(), item]));
-  for (const enrollment of [...enrollments].reverse()) {
-    if (selected.size >= MAX_BOARD_RECONCILIATIONS) break;
+  requestedStart = 0,
+): BoardCandidateSelection {
+  const enrollmentByWallet = new Map<string, LeagueProfile>();
+  for (const enrollment of enrollments) {
     const key = enrollment.walletAddress.toLowerCase();
-    if (!selected.has(key)) selected.set(key, { enrollment, snapshot: snapshotByWallet.get(key) });
+    if (!enrollmentByWallet.has(key)) enrollmentByWallet.set(key, enrollment);
   }
-
-  if (preferredWallet) {
-    const key = preferredWallet.toLowerCase();
-    const preferred = enrollmentByWallet.get(key);
-    if (preferred && !selected.has(key)) {
-      const candidates = [...selected.keys()];
-      const replaced = candidates[candidates.length - 1];
-      if (replaced) selected.delete(replaced);
-      selected.set(key, { enrollment: preferred, snapshot: snapshotByWallet.get(key) });
-    }
-  }
-  return [...selected.values()];
+  const orderedEnrollments = [...enrollmentByWallet.values()].sort(compareEnrollments);
+  const totalEnrollments = orderedEnrollments.length;
+  const cohortStart = Number.isSafeInteger(requestedStart)
+    && requestedStart >= 0
+    && requestedStart < totalEnrollments
+    ? requestedStart
+    : 0;
+  const selectedEnrollments = orderedEnrollments.slice(
+    cohortStart,
+    cohortStart + MAX_BOARD_RECONCILIATIONS,
+  );
+  const end = cohortStart + selectedEnrollments.length;
+  const cycleComplete = end >= totalEnrollments;
+  return {
+    candidates: selectedEnrollments,
+    cohortStart,
+    nextCohortStart: cycleComplete ? 0 : end,
+    cohortNumber: totalEnrollments === 0
+      ? 0
+      : Math.floor(cohortStart / MAX_BOARD_RECONCILIATIONS) + 1,
+    cohortCount: Math.ceil(totalEnrollments / MAX_BOARD_RECONCILIATIONS),
+    cycleComplete,
+    totalEnrollments,
+  };
 }
 
 export function scoreSnapshotFromEvidence(evidence: ReconciledProfile): Omit<

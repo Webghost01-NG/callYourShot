@@ -27,8 +27,9 @@ DreamDEX is the trading venue. Call Your Shot is the competition layer:
   of stake size;
 - shareable receipts and friend challenges resolve from independent on-chain
   trades without custody or tournament escrow;
-- every displayed leaderboard score is rebuilt from DreamDEX evidence; the
-  database can nominate candidates but cannot manufacture rank.
+- leaderboard membership follows deterministic enrollment cohorts; published
+  score claims choose neither the shortlist nor rank, and every displayed score
+  is rebuilt from DreamDEX evidence.
 
 No AI signal is forced into the product. The human decision—and its proof—is
 the experience.
@@ -63,7 +64,7 @@ flowchart LR
   R --> S[Finalized Event Contract<br/>+ oracle evidence]
   S --> P[Deterministic skill record]
   P --> L[Receipts, challenges,<br/>leaderboard]
-  DB[(Supabase)] -. identity, invitations,<br/>candidate snapshots .-> L
+  DB[(Supabase)] -. identity, invitations,<br/>optional evidence cache .-> L
   L --> C
 ```
 
@@ -73,6 +74,12 @@ status, expiry, collateral, outcome IDs, pool constraints, and real book. A
 lagging indexer can nominate a row but cannot authorize a stale market. Reviewed
 writes remain pinned to one market and endpoint route; wallet writes are never
 automatically retried.
+
+Leaderboard verification is separately bounded into deterministic cohorts by
+enrollment time and wallet address. A partial cycle is labeled a verified
+subset; whole-league language appears only after every enrollment reconciles
+successfully. Self-published score snapshots are compared only after membership
+selection and can never crowd another wallet out of the board.
 
 ## DreamDEX depth
 
