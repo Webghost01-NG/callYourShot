@@ -13,6 +13,7 @@ import {
   createWalletClient,
   decodeEventLog,
   encodeFunctionData,
+  formatUnits,
   http,
   parseAbi,
   parseAbiItem,
@@ -36,7 +37,10 @@ const poolParametersAbi = parseAbi([
   "function getOrderBookParameters() view returns (uint256 tickSize, uint256 minQuantity, uint256 lotSize)",
 ]);
 const approveAbi = parseAbi(["function approve(address spender,uint256 amount) returns (bool)"]);
-const erc20MetadataAbi = parseAbi(["function symbol() view returns (string)"]);
+const erc20ReadAbi = parseAbi([
+  "function balanceOf(address account) view returns (uint256)",
+  "function symbol() view returns (string)",
+]);
 const marketFinalizedEvent = parseAbiItem(
   "event MarketFinalized(bytes32 indexed marketId, address indexed pool, uint256 marketKey)",
 );
@@ -85,6 +89,36 @@ export function assertPlanAuthorization(
   if (activeChainId !== somniaShannon.id) {
     throw new Error("Switch to Somnia Testnet, then review the call again.");
   }
+}
+
+export function assertWalletFunding(input: {
+  nativeBalance: bigint;
+  collateralBalance: bigint;
+  maximumCost: bigint;
+  collateralDecimals: number;
+  collateralSymbol: string;
+}) {
+  const hasGas = input.nativeBalance > 0n;
+  const hasCollateral = input.collateralBalance >= input.maximumCost;
+  if (hasGas && hasCollateral) return;
+
+  const available = formatUnits(input.collateralBalance, input.collateralDecimals);
+  const required = formatUnits(input.maximumCost, input.collateralDecimals);
+  if (!hasGas && !hasCollateral) {
+    throw new Error(
+      `This wallet has no STT for Somnia network fees and has ${available} ${input.collateralSymbol}; `
+      + `this call requires up to ${required} ${input.collateralSymbol}. Fund this connected wallet, then review again.`,
+    );
+  }
+  if (!hasGas) {
+    throw new Error(
+      "This wallet has no STT for Somnia network fees. Fund this connected wallet with STT, then review again.",
+    );
+  }
+  throw new Error(
+    `This wallet has ${available} ${input.collateralSymbol}; this call requires up to ${required} `
+    + `${input.collateralSymbol}. Fund this connected wallet, lower the maximum loss, or choose another market.`,
+  );
 }
 
 interface RuntimeConnection {
@@ -177,13 +211,13 @@ export class BrowserDreamDexRuntime {
     };
   }
 
-  private async readRound(connection: RuntimeConnection, market: DiscoveredMarket): Promise<LiveRound> {
+  private collateralSymbol(connection: RuntimeConnection, market: DiscoveredMarket) {
     const key = `${connection.bundle.id}:${market.collateral.toLowerCase()}`;
     let symbol = this.collateralSymbols.get(key);
     if (!symbol) {
       symbol = connection.publicClient.readContract({
         address: market.collateral,
-        abi: erc20MetadataAbi,
+        abi: erc20ReadAbi,
         functionName: "symbol",
       }).then((value) => {
         const clean = value.trim().slice(0, 16);
@@ -191,12 +225,16 @@ export class BrowserDreamDexRuntime {
       }).catch(() => `${market.collateral.slice(0, 6)}…${market.collateral.slice(-4)}`);
       this.collateralSymbols.set(key, symbol);
     }
+    return symbol;
+  }
+
+  private async readRound(connection: RuntimeConnection, market: DiscoveredMarket): Promise<LiveRound> {
     const [book, collateralSymbol] = await Promise.all([
       connection.exchange.client.getBinaryOrderBook(market.pool, {
         decimals: market.indexed.quoteDecimals,
         depth: 10,
       }),
-      symbol,
+      this.collateralSymbol(connection, market),
     ]);
     return { market, book, collateralSymbol };
   }
@@ -316,11 +354,28 @@ export class BrowserDreamDexRuntime {
       input.quantity,
       input.market.constraints.priceScale,
     );
-    const allowance = await connection.exchange.client.getErc20Allowance(
-      input.market.collateral,
-      account,
-      input.market.pool,
-    );
+    const [nativeBalance, collateralBalance, collateralSymbol, allowance] = await Promise.all([
+      connection.publicClient.getBalance({ address: account }),
+      connection.publicClient.readContract({
+        address: input.market.collateral,
+        abi: erc20ReadAbi,
+        functionName: "balanceOf",
+        args: [account],
+      }),
+      this.collateralSymbol(connection, input.market),
+      connection.exchange.client.getErc20Allowance(
+        input.market.collateral,
+        account,
+        input.market.pool,
+      ),
+    ]);
+    assertWalletFunding({
+      nativeBalance,
+      collateralBalance,
+      maximumCost,
+      collateralDecimals: input.market.indexed.quoteDecimals,
+      collateralSymbol,
+    });
     const unsigned = await this.adapter(input.walletClient, connection).prepareOrder(input.market, {
       side: input.side,
       price: input.yesPrice,
