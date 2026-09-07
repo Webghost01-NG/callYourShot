@@ -2,6 +2,23 @@
 
 Status date: 2026-09-07
 
+## Current release summary
+
+Application commit `4236cda` supersedes the historical baseline below. Its CI
+passed, Vercel reported deployment success, and production served the new sidebar,
+editorial hero, and QR-unavailable message. Validation included 66 Node tests,
+83 Vitest tests, TypeScript, production build, and responsive browser checks at
+320, 390, 768, and 1440 pixels. The existing bundle-size warning remains.
+
+Current limitations: QR pairing is deliberately suspended; the final public
+video is missing; the recorded two-wallet challenge still awaits settlement and
+rematch acceptance. Both genuine fills and qualified profiles are already
+evidenced in [growth-loop validation](GROWTH_LOOP_VALIDATION.md). Do not treat
+the older no-trade/no-enrollment observations below as the current state.
+
+## Historical validation baseline
+
+The remainder records checks from earlier releases unless explicitly dated.
 This report records only checks actually completed against the public release.
 Unavailable integrations and owner-signature checks remain explicit blockers;
 they are not represented by fixtures or invented records.
@@ -23,7 +40,7 @@ must use the Vercel project history and a verified `main` commit.
 
 ## Public configuration
 
-Only these public browser configuration names are present in the Vercel
+At the historical baseline, these public browser configuration names were present in the Vercel
 Production, Preview, and Development environments:
 
 - `VITE_DREAMDEX_OPERATOR_ID`
@@ -39,8 +56,9 @@ The configured Supabase key is the browser-safe publishable key. Ethereum Web3
 authentication is enabled for Somnia network `50312`, and migrations
 `202609040001`, `202609040002`, and `202609060001` are present in both the local
 and remote migration histories. No service-role key is present in Vercel or
-source. `VITE_REOWN_PROJECT_ID` remains intentionally absent until a real Reown
-project and origin allowlist are owner-validated.
+source. The earlier baseline did not include `VITE_REOWN_PROJECT_ID`. That is
+not a current environment inventory; QR registration is now suspended in code
+regardless of any configured project ID.
 
 ## Completed checks
 
@@ -94,15 +112,13 @@ successful live trade or hide upstream lag.
 
 ## Outstanding owner-operated acceptance
 
-- Create and allowlist a real Reown project, add its public ID to Vercel, and
-  verify desktop extension, mobile handoff, and desktop QR connection paths.
+- If QR is restored, verify mobile handoff and desktop QR before claiming support.
 - Publish one authenticated snapshot from the production UI and confirm the
   next refresh rebuilds its score from DreamDEX rather than trusting storage.
-- Validate invited-wallet challenge acceptance and cross-wallet RLS denial
-  using two real wallets when an eligible live DreamDEX round is available.
-- Authorize a small real UP or DOWN order from the deployed React application,
-  confirm an actual `OrderFilled` event, and verify that the profile reconstructs
-  the call. A successful transaction with no fill does not satisfy this check.
+- Complete settlement comparison and rematch for the already accepted, two-fill
+  production challenge; acceptance and app-originated fills are no longer missing.
+- Retain a separate real two-wallet cross-wallet RLS-denial acceptance check;
+  successful acceptance alone does not prove every denial path.
 - Exercise wallet rejection, wrong-network recovery, account switching during
   review, keyboard-only prediction entry, and a live round rollover.
 - Rehearse the complete two-to-three-minute runbook with genuine previously
