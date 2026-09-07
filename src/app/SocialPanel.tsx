@@ -488,18 +488,25 @@ export function SocialPanel({
     : marketDiscoveryState === "loading"
       ? "checking"
       : "unavailable";
+  const invitedOpenChallenge = challenge?.status === "open"
+    && address?.toLowerCase() === challenge.invitedWallet.toLowerCase();
+  // The bounded lobby is a discovery aid, not an authoritative lock signal.
+  // Keep an invited wallet's open challenge actionable so acceptChallenge can
+  // re-read the exact Event Contract immediately before the database mutation.
+  const lifecycleMarketState: ChallengeMarketState = invitedOpenChallenge
+    && challengeMarketState === "unavailable"
+      ? "checking"
+      : challengeMarketState;
   const challengeLifecycle = challenge && challengeEvidence ? deriveChallengeLifecycle({
     status: challenge.status,
     creator: challengeEvidence.creator,
     opponent: challengeEvidence.opponent,
-    market: challengeMarketState,
+    market: lifecycleMarketState,
   }) : undefined;
   const challengeResult = challengeLifecycle === "completed" && challengeEvidence?.creator && challengeEvidence.opponent
     ? completedChallengeResult(challengeEvidence.creator, challengeEvidence.opponent)
     : undefined;
-  const canAccept = challengeLifecycle === "open"
-    && challengeMarketState === "live"
-    && address?.toLowerCase() === challenge?.invitedWallet.toLowerCase();
+  const canAccept = challengeLifecycle === "open" && invitedOpenChallenge;
   const canCancel = challenge?.status === "open" && address?.toLowerCase() === challenge.creatorWallet.toLowerCase();
   const rematchLink = challenge && challengeLifecycle && [
     "completed",
@@ -572,7 +579,7 @@ export function SocialPanel({
           {challengeState === "loading" && <span aria-live="polite">Rebuilding both records from DreamDEX…</span>}
           {challengeState === "not-found" && <span role="status">This challenge was not found or is no longer available.</span>}
           {challengeState === "error" && <span role="alert">{challengeError ?? "This challenge could not be verified."}</span>}
-          {challengeState === "ready" && challenge && challengeEvidence && <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>This app compares independent trades in one market and never escrows funds.</p><ChallengeLifecycleNotice lifecycle={challengeLifecycle!} result={challengeResult} creator={challenge.creatorWallet} opponent={challenge.invitedWallet} />{challengeMarketState === "checking" && <p className="shared-market-state" role="status">Checking whether this exact Event Contract is still tradable…</p>}{challengeMarketState === "live" && challengeLifecycle !== "completed" && <p className="shared-market-state live" role="status">Exact Event Contract found and selected. <a href="#arena">Go to the matching market ↓</a></p>}{challengeMarketState === "unavailable" && challengeLifecycle !== "completed" && <p className="shared-market-state unavailable" role="status">This exact Event Contract is no longer in the verified live lobby. It may have locked or be temporarily unavailable, so no replacement market has been selected.</p>}<div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>Accept with verified wallet</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}{rematchLink && <a className="secondary rematch-link" href={rematchLink}>Challenge again on a live event</a>}</>}
+          {challengeState === "ready" && challenge && challengeEvidence && <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>This app compares independent trades in one market and never escrows funds.</p><ChallengeLifecycleNotice lifecycle={challengeLifecycle!} result={challengeResult} creator={challenge.creatorWallet} opponent={challenge.invitedWallet} />{challengeMarketState === "checking" && <p className="shared-market-state" role="status">Checking whether this exact Event Contract is still tradable…</p>}{challengeMarketState === "live" && challengeLifecycle !== "completed" && <p className="shared-market-state live" role="status">Exact Event Contract found and selected. <a href="#arena">Go to the matching market ↓</a></p>}{challengeMarketState === "unavailable" && challengeLifecycle !== "completed" && <p className="shared-market-state unavailable" role="status">This exact Event Contract is not in the current lobby snapshot. Acceptance will re-check it directly; no replacement market will be selected.</p>}<div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>{challengeMarketState === "live" ? "Accept with verified wallet" : "Re-check exact market and accept"}</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}{rematchLink && <a className="secondary rematch-link" href={rematchLink}>Challenge again on a live event</a>}</>}
         </article>
       )}
 
