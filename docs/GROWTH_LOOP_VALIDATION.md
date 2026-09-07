@@ -2,9 +2,10 @@
 
 Status date: 2026-09-07
 
-The product path is implemented and automatically tested. A complete real
-two-wallet production journey is still pending owner-operated signatures and
-must not be described as completed until the evidence table below is filled.
+The product path is implemented and automatically tested. Real two-wallet
+activation is now proven: one accepted production challenge has two distinct,
+receipt-verified DreamDEX fills in its exact Event Contract. Terminal comparison
+and rematch evidence remain pending until that Event Contract finalizes.
 
 ## The smallest credible loop
 
@@ -67,17 +68,19 @@ the existing challenge.
 
 ## Real evidence record
 
-Complete this only after the procedure succeeds:
+This table records only evidence independently reconstructed on 2026-09-07:
 
 | Evidence | Value |
 |---|---|
-| Challenge URL | Pending owner-operated run |
-| Wallet A fill transaction | Pending owner-operated run |
-| Wallet B fill transaction | Pending owner-operated run |
+| Challenge URL | [Accepted production challenge](https://call-your-shot-six.vercel.app/?challenge=88e5c960-fbec-4942-b6f0-697cbc83572a) |
+| Wallet A fill transaction | [`0x513283…c1a35`](https://shannon-explorer.somnia.network/tx/0x513283975ac8d098a49155411651e364a85e38f88c75e2163b2534caa53c1a35) — creator UP |
+| Wallet B fill transaction | [`0x2d8f0b…8f986`](https://shannon-explorer.somnia.network/tx/0x2d8f0b62cdec9ba92dc5f6d8ce064c721e3f51110909806980b369df0008f986) — invitee DOWN |
 | Event Contract finalization | Pending owner-operated run |
 | Wallet A result link verified | Pending owner-operated run |
 | Wallet B result link verified | Pending owner-operated run |
 | Rematch route verified | Pending owner-operated run |
 
-The empty evidence record is intentional. It prevents product capability from
-being confused with observed adoption.
+The challenge row is accepted and binds wallets `0xd181…25c7` and
+`0xf400…c9a5` to Event Contract `0x…15779`. Both calls currently reconcile as
+pending, so neither is assigned points and the remaining rows intentionally stay
+incomplete until real finalization.

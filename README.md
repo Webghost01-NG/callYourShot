@@ -41,6 +41,8 @@ the experience.
 | The same Event Contract finalized | [Finalization transaction](https://shannon-explorer.somnia.network/tx/0xc6be2aec93dd415d70fb5d41900c8a521284827fa13ff7435bd91b7121596046) |
 | Its oracle answer is traceable | [Oracle transaction](https://shannon-explorer.somnia.network/tx/0x3b14ed8f2a8d64ac099bb68c63d04b2cdb8e784169018f4a01cbb0ff20d9b0da) |
 | The score can be rebuilt without a wallet or database | [Runtime-reconciled receipt](https://call-your-shot-six.vercel.app/?receiptWallet=0x6CeD8D6Bad8Dfd2e60BCEA116fE74548f959f1F2&receiptMarket=0x00000000000000000000000000000000000000000000000000000000000127a9) |
+| Two wallets made independent calls in one accepted challenge | [Live challenge and both receipt-backed calls](https://call-your-shot-six.vercel.app/?challenge=88e5c960-fbec-4942-b6f0-697cbc83572a) |
+| The league has qualified profiles | [Live verified leaderboard](https://call-your-shot-six.vercel.app/#league) |
 | Approval, fill, settlement, redemption, and refunds were exercised | [Integration validation](docs/DREAMDEX_VALIDATION.md) |
 
 The public receipt deliberately shows a losing call. It is genuine evidence,
@@ -106,10 +108,11 @@ See [architecture](docs/ARCHITECTURE.md),
 5. Share the proof or rematch on a newly discovered live event.
 
 The loop creates genuine DreamDEX activity only when two people choose to trade.
-It does not reward wash volume, stake size, or self-reported outcomes. The first
-real two-wallet production journey remains an explicit acceptance item in
-[Issue #50](https://github.com/Webghost01-NG/callYourShot/issues/50); no user or
-engagement numbers are claimed before that evidence exists.
+It does not reward wash volume, stake size, or self-reported outcomes. A real
+accepted challenge now has two independent fills; its terminal comparison and
+rematch remain an explicit acceptance item in
+[Issue #50](https://github.com/Webghost01-NG/callYourShot/issues/50) until the
+shared Event Contract finalizes. No unsupported engagement rate is claimed.
 
 ## Run locally
 

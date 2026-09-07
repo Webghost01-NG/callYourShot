@@ -75,11 +75,12 @@ the verified leaderboard, create a noncustodial friend challenge, and copy a
 result receipt. Explain that Supabase coordinates identities and links while
 DreamDEX remains the source of trading and score truth.
 
-On a completed real two-wallet challenge, open both fill/result proof links and
-then click **Challenge again on a live event**. Show that the previous opponent
-is prefilled while the old locked market is not: the next interaction must begin
-with a newly discovered live Event Contract. If the real two-wallet acceptance
-record is incomplete, describe this as the implemented path, not measured use.
+Open the [accepted production challenge](https://call-your-shot-six.vercel.app/?challenge=88e5c960-fbec-4942-b6f0-697cbc83572a)
+and show its two independent fill receipts. If Event Contract `0x…15779` has
+finalized, open both result proofs and then click **Challenge again on a live
+event**. Show that the previous opponent is prefilled while the old locked market
+is not. If it is still pending, call the two-fill activation complete but do not
+claim a terminal comparison or rematch result.
 
 Point to the board coverage line: snapshots choose a bounded candidate set, but
 every displayed score was rebuilt from DreamDEX during this refresh. If a

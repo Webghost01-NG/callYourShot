@@ -34,6 +34,8 @@ buy a higher score.
 - [x] Architecture and verification-flow diagram in the README
 - [x] Genuine product screenshot from the public deployment
 - [x] Public fill, finalization, oracle, and runtime-reconciled receipt links
+- [x] Verified leaderboard with two profiles above the ten-settlement threshold
+- [x] Accepted two-wallet challenge with two independent DreamDEX fills
 - [x] SDK/documentation feedback
 - [ ] Final two-to-three-minute demo video URL
 - [ ] Real two-wallet challenge comparison from invitation through settlement
@@ -41,8 +43,10 @@ buy a higher score.
 - [x] Owner-approved MIT repository license
 - [x] Owner-approved Node 22 continuous-integration workflow
 
-The checked items are directly inspectable in the repository. The remaining
-items require owner-controlled accounts or signing and must remain unchecked
+The checked items are directly inspectable in the repository. The challenge's
+two-call activation is complete, but its separate terminal-comparison item stays
+unchecked until the shared Event Contract genuinely finalizes. The remaining
+items require owner-controlled accounts or publishing and must remain unchecked
 until completed.
 
 ## Final DoraHacks pass
