@@ -29,4 +29,13 @@ describe("application document metadata", () => {
     expect(previewPng.readUInt32BE(16)).toBe(1_200);
     expect(previewPng.readUInt32BE(20)).toBe(630);
   });
+
+  it("keeps sticky navigation outside an overflow scroll container", async () => {
+    const styles = await readFile(resolve(process.cwd(), "src/app/styles.css"), "utf8");
+
+    expect(styles).toMatch(/html\s*\{[^}]*scroll-padding-top:\s*106px/);
+    expect(styles).toMatch(/\.app-shell\s*\{[^}]*overflow-x:\s*clip/);
+    expect(styles).not.toMatch(/\.app-shell\s*\{[^}]*overflow:\s*hidden/);
+    expect(styles).toMatch(/\.topbar\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0/);
+  });
 });

@@ -20,7 +20,7 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 106px; }
 body {
   margin: 0;
   min-width: 320px;
@@ -51,7 +51,7 @@ button:focus-visible, input:focus-visible, a:focus-visible {
   outline: 3px solid var(--lime);
   outline-offset: 3px;
 }
-.app-shell { min-height: 100vh; overflow: hidden; }
+.app-shell { min-height: 100vh; overflow-x: clip; }
 .skip-link {
   position: fixed;
   top: 12px;
