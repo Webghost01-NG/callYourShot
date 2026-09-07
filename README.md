@@ -130,6 +130,9 @@ npm test
 npm run build
 ```
 
+Every pull request and push to `main` runs these locked Node.js 22 checks in
+GitHub Actions. The project is released under the [MIT License](LICENSE).
+
 The wallet-controlled transaction harness is available with
 `npm run validate:dreamdex`. The read-only live and profile checks are documented
 in [the release validation report](docs/RELEASE_VALIDATION.md).

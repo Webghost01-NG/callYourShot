@@ -38,12 +38,12 @@ buy a higher score.
 - [ ] Final two-to-three-minute demo video URL
 - [ ] Real two-wallet challenge comparison from invitation through settlement
 - [ ] Real Reown Project ID and mobile/QR acceptance evidence
-- [ ] Owner-approved repository license
-- [ ] Owner-approved continuous-integration workflow
+- [x] Owner-approved MIT repository license
+- [x] Owner-approved Node 22 continuous-integration workflow
 
 The checked items are directly inspectable in the repository. The remaining
-items require owner-controlled accounts, signing, or an explicit legal or
-automation decision and must remain unchecked until completed.
+items require owner-controlled accounts or signing and must remain unchecked
+until completed.
 
 ## Final DoraHacks pass
 
