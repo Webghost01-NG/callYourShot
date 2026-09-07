@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Address, EIP1193Provider } from "viem";
+import type { Address, EIP1193Provider, WalletClient } from "viem";
 import type { LiveRound } from "../../src/app/runtime.js";
 
 const runtimeMocks = vi.hoisted(() => ({
@@ -36,7 +36,7 @@ vi.mock("../../src/app/runtime.js", () => ({
   },
 }));
 
-import { App, resolveConnectedWallet } from "../../src/app/App.js";
+import { App, resolveConnectedWallet, resolveReviewWallet } from "../../src/app/App.js";
 import { MARKET_DISCOVERY_DEADLINE_MS } from "../../src/app/marketDiscovery.js";
 
 const marketId = `0x${"1".repeat(64)}`;
@@ -308,5 +308,49 @@ describe("wallet connection resolution", () => {
     expect(getProvider).toHaveBeenCalledWith(50_312);
     expect(connection.address).toBe(address);
     expect(connection.walletClient.account?.address).toBe(address);
+  });
+
+  it("builds a Somnia signer from the active connector while Wagmi is still hydrating", async () => {
+    const address = `0x${"2".repeat(40)}` as Address;
+    const provider = {
+      request: vi.fn(),
+      on: vi.fn(),
+      removeListener: vi.fn(),
+    } as unknown as EIP1193Provider;
+    const switchToSomnia = vi.fn().mockResolvedValue(undefined);
+    const getSomniaProvider = vi.fn().mockResolvedValue(provider);
+
+    const client = await resolveReviewWallet({
+      currentAddress: address,
+      currentChainId: 1,
+      walletClient: undefined,
+      switchToSomnia,
+      getSomniaProvider,
+    });
+
+    expect(switchToSomnia).toHaveBeenCalledTimes(1);
+    expect(getSomniaProvider).toHaveBeenCalledTimes(1);
+    expect(client.account?.address).toBe(address);
+    expect(client.chain?.id).toBe(50_312);
+  });
+
+  it("reuses an already-ready Somnia client without asking the connector again", async () => {
+    const address = `0x${"3".repeat(40)}` as Address;
+    const client = {
+      account: { address },
+      chain: { id: 50_312 },
+    } as WalletClient;
+    const switchToSomnia = vi.fn();
+    const getSomniaProvider = vi.fn();
+
+    await expect(resolveReviewWallet({
+      currentAddress: address,
+      currentChainId: 50_312,
+      walletClient: client,
+      switchToSomnia,
+      getSomniaProvider,
+    })).resolves.toBe(client);
+    expect(switchToSomnia).not.toHaveBeenCalled();
+    expect(getSomniaProvider).not.toHaveBeenCalled();
   });
 });

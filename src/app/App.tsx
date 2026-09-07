@@ -1,7 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useWalletClient } from "wagmi";
 import { somniaShannon } from "@somnia-chain/markets-sdk/chains";
-import { createWalletClient, custom, type Address, type EIP1193Provider, type Hex } from "viem";
+import {
+  createWalletClient,
+  custom,
+  type Address,
+  type EIP1193Provider,
+  type Hex,
+  type WalletClient,
+} from "viem";
 import type { VerifiedExecution } from "../core/execution.js";
 import type { ReconciledProfile } from "../dreamdex/reconciliation.js";
 import { readSocialRoute } from "../social/share.js";
@@ -91,6 +98,42 @@ export async function resolveConnectedWallet({
   };
 }
 
+interface ReviewWalletInput {
+  currentAddress?: Address;
+  currentChainId?: number;
+  walletClient?: WalletClient;
+  switchToSomnia: () => Promise<unknown>;
+  getSomniaProvider: () => Promise<EIP1193Provider | undefined>;
+}
+
+export async function resolveReviewWallet({
+  currentAddress,
+  currentChainId,
+  walletClient,
+  switchToSomnia,
+  getSomniaProvider,
+}: ReviewWalletInput): Promise<WalletClient> {
+  if (!currentAddress) throw new Error("Connect a wallet before reviewing your call.");
+  if (currentChainId !== somniaShannon.id) await switchToSomnia();
+
+  if (
+    walletClient?.account?.address.toLowerCase() === currentAddress.toLowerCase()
+    && walletClient.chain?.id === somniaShannon.id
+  ) {
+    return walletClient;
+  }
+
+  const provider = await getSomniaProvider();
+  if (!provider) {
+    throw new Error("The connected wallet signer is unavailable. Reconnect the wallet and try again.");
+  }
+  return createWalletClient({
+    account: currentAddress,
+    chain: somniaShannon,
+    transport: custom(provider),
+  });
+}
+
 export function App() {
   const configResult = useMemo(() => {
     try {
@@ -123,6 +166,7 @@ export function App() {
   const [selected, setSelected] = useState<"UP" | "DOWN">("UP");
   const [stake, setStake] = useState("1");
   const [plan, setPlan] = useState<OrderPlan>();
+  const [reviewWalletClient, setReviewWalletClient] = useState<WalletClient>();
   const [txState, setTxState] = useState<TxState>("idle");
   const [txHash, setTxHash] = useState<Hex>();
   const [approvalHash, setApprovalHash] = useState<Hex>();
@@ -312,6 +356,7 @@ export function App() {
       || chainId !== somniaShannon.id
     ) {
       setPlan(undefined);
+      setReviewWalletClient(undefined);
       setTxError("The wallet or network changed. Review the call again.");
       setTxState("failed");
     }
@@ -345,6 +390,7 @@ export function App() {
     if (selectedMarketId?.toLowerCase() === marketId.toLowerCase()) return;
     setSelectedMarketId(marketId);
     setPlan(undefined);
+    setReviewWalletClient(undefined);
     setExecution(undefined);
     setTxHash(undefined);
     setApprovalHash(undefined);
@@ -370,12 +416,18 @@ export function App() {
     setTxHash(undefined);
     setApprovalHash(undefined);
     setApprovalConfirmed(false);
+    setReviewWalletClient(undefined);
     try {
-      if (chainId !== somniaShannon.id) {
-        await switchChainAsync({ chainId: somniaShannon.id });
-        throw new Error("Somnia Testnet is ready. Review the call again before signing.");
-      }
-      if (!walletClient) throw new Error("Wallet is still connecting. Try again.");
+      const signingWallet = await resolveReviewWallet({
+        currentAddress: address,
+        currentChainId: chainId,
+        walletClient,
+        switchToSomnia: () => switchChainAsync({ chainId: somniaShannon.id }),
+        getSomniaProvider: async () => {
+          const provider = await activeConnector?.getProvider({ chainId: somniaShannon.id });
+          return provider as EIP1193Provider | undefined;
+        },
+      });
       const liveRound = await runtime!.refreshRound(round.market.marketId);
       const liveQuote = buildCallQuote({
         stake: parseDecimalUnits(stake, liveRound.market.indexed.quoteDecimals),
@@ -388,13 +440,14 @@ export function App() {
           ? liveRound : item,
       ));
       const nextPlan = await runtime!.prepareOrder({
-        walletClient,
+        walletClient: signingWallet,
         market: liveRound.market,
         side,
         yesPrice: liveQuote.yesPrice,
         quantity: liveQuote.quantity,
       });
       setPlan(nextPlan);
+      setReviewWalletClient(signingWallet);
       setTxState("review");
     } catch (error) {
       const message = errorMessage(error);
@@ -405,7 +458,8 @@ export function App() {
   }
 
   async function confirmCall() {
-    if (!plan || !walletClient) return;
+    const signingWallet = reviewWalletClient ?? walletClient;
+    if (!plan || !signingWallet) return;
     const progress = {
       approvalRequired: Boolean(plan.approval),
       approvalSubmitted: false,
@@ -419,7 +473,7 @@ export function App() {
     setApprovalHash(undefined);
     setApprovalConfirmed(false);
     try {
-      const result = await runtime!.sendPlan(walletClient, plan, {
+      const result = await runtime!.sendPlan(signingWallet, plan, {
         onApprovalSubmitted: (hash) => {
           progress.approvalSubmitted = true;
           setApprovalHash(hash);
