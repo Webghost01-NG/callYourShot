@@ -110,6 +110,22 @@ describe("verified endpoint failover", () => {
     expect(result).toEqual({ value: "recovered", index: 1, failedAttempts: 1 });
   });
 
+  it("ignores a timed-out route when its late result arrives after recovery", async () => {
+    let resolvePrimary!: (value: string) => void;
+    const primary = new Promise<string>((resolve) => { resolvePrimary = resolve; });
+    const result = await attemptEndpointBundles({
+      bundles,
+      startingIndex: 0,
+      deadlineMs: 5,
+      attempt: async (_bundle, index) => index === 0 ? primary : "recovered",
+    });
+
+    resolvePrimary("late primary");
+    await primary;
+
+    expect(result).toEqual({ value: "recovered", index: 1, failedAttempts: 1 });
+  });
+
   it("never reports success when every verified bundle fails", async () => {
     await expect(attemptEndpointBundles({
       bundles,

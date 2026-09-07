@@ -34,11 +34,15 @@ seen any current candidate reaches the honest no-live-market state. This keeps
 indexer lag an availability signal instead of turning it into authority over
 current chain state.
 
-Each bundle receives an eight-second deadline. If a read attempt fails or times
-out, the runtime tries the other complete bundle once. The total remains inside
-the UI's separate 20-second discovery deadline. It does not mix the failed
-bundle's indexer result, contract result, or book with the replacement. If both
-fail, the last bounded error is shown and no market is fabricated.
+Each bundle receives a 35-second deadline. This covers the observed cold-path
+latency of a fully verified Shannon snapshot while keeping a stalled route
+bounded. If a read attempt fails or times out, the runtime tries the other
+complete bundle once. The UI deadline is derived from the number of configured
+bundles: one complete per-route budget for each bundle plus five seconds of UI
+scheduling grace. It does not mix the failed bundle's indexer result, contract
+result, or book with the replacement. A late result from a retired attempt is
+ignored. If both fail, the last route-specific bounded error is shown and no
+market is fabricated.
 
 ## Write boundary
 
