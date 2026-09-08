@@ -3,6 +3,8 @@
 > A prediction league where every score starts with a real DreamDEX fill.
 
 [**Open the live app**](https://call-your-shot-six.vercel.app) ·
+[**Download the 2:40 demo video**](https://github.com/Webghost01-NG/callYourShot/releases/download/demo-2026-09-08/Call-Your-Shot-Live-Demo.mp4) ·
+[**Presentation deck**](https://github.com/Webghost01-NG/callYourShot/releases/tag/demo-2026-09-08) ·
 [**Inspect a genuine settled receipt**](https://call-your-shot-six.vercel.app/?receiptWallet=0x6CeD8D6Bad8Dfd2e60BCEA116fE74548f959f1F2&receiptMarket=0x00000000000000000000000000000000000000000000000000000000000127a9) ·
 [**Follow the 3-minute demo**](docs/DEMO_RUNBOOK.md)
 
@@ -24,7 +26,10 @@ but must be tested separately. Re-enable QR only after an end-to-end acceptance 
 leaderboard coverage are live. The documented two-wallet challenge now displays
 both settled results, with a reloadable public comparison and a verified rematch
 navigation path. A second played rematch is not claimed. QR pairing is suspended.
-The final public demo video is not published yet; the linked runbook is not a video.
+The public demo and PowerPoint/PDF deck are published in the linked GitHub release.
+The video records the live production interface and previously executed genuine
+transaction evidence. It does not show a newly signed trade. Synthetic narration
+and on-screen captions make this distinction explicit.
 
 The score records realized prediction performance, not proof of persistent human
 identity or conclusive forecasting skill. Ten settlements qualify a profile for

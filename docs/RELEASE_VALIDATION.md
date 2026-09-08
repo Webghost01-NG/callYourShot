@@ -11,7 +11,9 @@ editorial hero, and QR-unavailable message. Validation included 66 Node tests,
 320, 390, 768, and 1440 pixels. The existing bundle-size warning remains.
 
 Current limitations: QR pairing is deliberately suspended; the final public
-video is missing. After `aebe490`, production challenge comparison and rematch
+video is now published in [the media release](https://github.com/Webghost01-NG/callYourShot/releases/tag/demo-2026-09-08).
+It shows live UI and previously executed transactions, not new wallet signatures.
+After `aebe490`, production challenge comparison and rematch
 navigation passed; a fresh completed comparison loaded in 15.038 seconds.
 A second played rematch is not claimed. Both genuine fills and qualified profiles are already
 evidenced in [growth-loop validation](GROWTH_LOOP_VALIDATION.md). Do not treat
