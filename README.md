@@ -21,8 +21,9 @@ but must be tested separately. Re-enable QR only after an end-to-end acceptance 
 3. Open **Your record** for receipts and **League** for verified competition.
 
 **Release status:** the redesigned interface, receipt verification, and deterministic
-leaderboard coverage are live. The documented two-wallet challenge has both fills,
-but settlement and rematch acceptance are still pending. QR pairing is suspended.
+leaderboard coverage are live. The documented two-wallet challenge now displays
+both settled results, with a reloadable public comparison and a verified rematch
+navigation path. A second played rematch is not claimed. QR pairing is suspended.
 The final public demo video is not published yet; the linked runbook is not a video.
 
 The score records realized prediction performance, not proof of persistent human
