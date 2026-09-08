@@ -31,6 +31,10 @@ The video records the live production interface and previously executed genuine
 transaction evidence. It does not show a newly signed trade. Synthetic narration
 and on-screen captions make this distinction explicit.
 
+The [final hardening report](docs/HARDENING_REPORT.md) records automated checks,
+responsive production verification, and remaining wallet/device testing risks.
+This is a testnet demonstration, not audited production trading software.
+
 The score records realized prediction performance, not proof of persistent human
 identity or conclusive forecasting skill. Ten settlements qualify a profile for
 ranking; they do not eliminate luck, correlated calls, or multiple-wallet selection.

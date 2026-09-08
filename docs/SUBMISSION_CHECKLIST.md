@@ -1,6 +1,6 @@
 # Hackathon submission checklist
 
-Status date: 2026-09-07
+Status date: 2026-09-08
 
 This page separates submission-ready evidence from owner actions. Do not replace
 an incomplete item with a placeholder URL, staged transaction, or invented
@@ -22,7 +22,7 @@ metric.
 
 Call Your Shot lets people make simple YES/NO calls on live DreamDEX Event
 Contracts, then turns real fills and finalized outcomes into an independently
-checkable skill record. Friend challenges use separate noncustodial trades, and
+checkable prediction-performance record. Friend challenges use separate noncustodial trades, and
 the ranking formula weights each settled call equally so a larger wallet cannot
 buy a higher score.
 
@@ -74,7 +74,7 @@ Before pressing submit:
 5. open every evidence link in a signed-out browser window;
 6. confirm the video demonstrates a real fill or clearly uses the genuine
    previously settled receipt when no live round is available;
-7. disclose testnet status and any unfinished mobile/two-wallet acceptance;
+7. disclose testnet status, suspended QR support, and that only rematch navigation—not a second played rematch—is verified;
 8. never call transaction inclusion a fill or provisional profiles ranked.
 
 ## Judging alignment

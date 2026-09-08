@@ -1,14 +1,24 @@
 # Judge release validation
 
-Status date: 2026-09-07
+Status date: 2026-09-08
 
 ## Current release summary
 
-Application commit `4236cda` supersedes the historical baseline below. Its CI
-passed, Vercel reported deployment success, and production served the new sidebar,
-editorial hero, and QR-unavailable message. Validation included 66 Node tests,
-83 Vitest tests, TypeScript, production build, and responsive browser checks at
-320, 390, 768, and 1440 pixels. The existing bundle-size warning remains.
+The final #8 pass builds on production commit `276b24a`. The fresh automated
+suite passes 67 Node tests and 86 Vitest tests, TypeScript, and the production
+build. `npm audit --omit=dev` reports zero vulnerabilities. The existing
+530 kB runtime bundle warning remains. The only application change in this pass
+keeps keyboard focus inside the wallet chooser when no choices are present or
+all controls are disabled during connection; it does not change wallet execution.
+
+Fresh production browser checks on September 8 found six current markets and
+complete six-wallet board coverage, with two profiles at 12 settlements each.
+The public completed challenge reloaded with Higher/lost and Lower/won and both
+fill/result links. Desktop (1440 px) and mobile-width (390 px) navigation to
+arena, record, and league retained visible navigation without horizontal overflow;
+320 px also passed the document-width check. Desktop and mobile landing layouts
+were visually inspected. These are desktop-Chrome responsive checks, not a
+physical-device wallet or QR acceptance claim.
 
 Current limitations: QR pairing is deliberately suspended; the final public
 video is now published in [the media release](https://github.com/Webghost01-NG/callYourShot/releases/tag/demo-2026-09-08).
@@ -124,8 +134,9 @@ successful live trade or hide upstream lag.
   successful acceptance alone does not prove every denial path.
 - Exercise wallet rejection, wrong-network recovery, account switching during
   review, keyboard-only prediction entry, and a live round rollover.
-- Rehearse the complete two-to-three-minute runbook with genuine previously
-  settled evidence and record the submission video.
+- The 2:40 production walkthrough and settled-evidence rehearsal are published
+  in the media release. A newly signed transaction is not part of that recording.
+  The owner must still confirm the submission form and any streaming-host requirement.
 
 ## Rollback
 

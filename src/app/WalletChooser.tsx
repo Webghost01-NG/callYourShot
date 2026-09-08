@@ -39,16 +39,28 @@ export function WalletChooser({
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const dialog = dialogRef.current;
+    const active = document.activeElement;
+    if (!dialog?.contains(active) || active?.matches(":disabled")) {
+      (dialog?.querySelector<HTMLElement>("button:not(:disabled)") ?? dialog)?.focus();
+    }
     function handleDialogKeys(event: KeyboardEvent) {
       if (event.key === "Escape" && !connecting) onClose();
       if (event.key !== "Tab") return;
       const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
         "button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex='-1'])",
       ) ?? []);
-      if (focusable.length === 0) return;
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialogRef.current?.focus();
+        return;
+      }
       const first = focusable[0]!;
       const last = focusable[focusable.length - 1]!;
-      if (event.shiftKey && document.activeElement === first) {
+      if (!focusable.includes(document.activeElement as HTMLElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -71,6 +83,7 @@ export function WalletChooser({
         ref={dialogRef}
         className="wallet-dialog"
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="wallet-dialog-title"
         aria-describedby="wallet-dialog-description"

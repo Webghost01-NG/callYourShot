@@ -4,6 +4,21 @@ This report covers the Issue #8 implementation pass. Automated tests use
 clearly isolated fixtures; live claims require separate network or wallet
 evidence.
 
+## Final testnet release pass — September 8, 2026
+
+The #8 pass adds wallet-dialog focus containment for empty and connecting states,
+with regression tests. It changes no contracts, database, endpoints, or trading
+logic. The current suite passes 67 Node and 86 Vitest tests; typecheck, production
+build, and the production dependency audit pass (zero reported vulnerabilities).
+
+Fresh production inspection found six current markets and all six enrolled wallets
+reconciled, including two 12-settlement profiles. Navigation at 1440 and 390 px
+remained visible across arena/record/league, without horizontal overflow; 320 px
+also passed the overflow check. Responsive layout checks do not establish mobile
+wallet support. The completed public challenge reloaded with both settled outcomes
+and receipt links. See [release validation](RELEASE_VALIDATION.md) and
+[the published 2:40 walkthrough](DEMO_MEDIA.md) for evidence and recording limits.
+
 ## Implemented protections
 
 - Current-round snapshots are periodically rebuilt instead of depending on an
@@ -65,16 +80,21 @@ evidence.
 - Production dependency audit with zero reported vulnerabilities at the time of
   this pass.
 
-## Manual checks still required
+## Remaining owner-operated verification
 
 These cannot be honestly marked complete by automated fixtures:
 
 - wallet rejection, wrong-network recovery, account switching during review,
   and a live rollover in the target browser wallet;
-- a final keyboard-only traversal and browser console/network inspection;
-- terminal comparison and rematch on the already activated two-wallet challenge
-  after its exact Event Contract finalizes;
-- a full timed judge rehearsal using the verified 11-settlement profile.
+- a full physical-device wallet pass (QR is suspended);
+- an authenticated cross-wallet RLS-denial exercise and a second played rematch.
+
+Terminal comparison and rematch navigation are now verified in production (#50),
+and the timed production walkthrough is published (#49). Neither substitutes for
+the wallet-edge-case tests above. Those remain residual testnet risks, not passed
+manual checks or claims of an audited production release. Keep #8 open until the
+remaining target-wallet acceptance is recorded or the owner explicitly narrows
+the supported release scope.
 
 Real React-originated fills, desktop/mobile rendering, Web3 authentication,
 anonymous reads, owner writes, invited-wallet acceptance, two independent
@@ -94,5 +114,8 @@ challenge-market fills, and qualified leaderboard profiles have been exercised.
 
 ## Release position
 
-The code is suitable for owner-operated testnet demonstration after the manual
-checks above. It is not represented as audited production trading software.
+The release has a demonstrated owner-operated desktop testnet path and a reloadable
+settled fallback, so judging does not depend on a new round settling. Keep QR out
+of the demonstration and disclose the remaining checks above. This is not audited
+production trading software, a complete accessibility certification, or proof of
+forecasting skill.
