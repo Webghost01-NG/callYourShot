@@ -6,6 +6,32 @@ import { WalletChooser } from "../../src/app/WalletChooser.js";
 describe("WalletChooser", () => {
   afterEach(cleanup);
 
+  it("keeps keyboard focus inside an empty chooser", async () => {
+    render(<WalletChooser choices={[]} connecting={false} onChoose={vi.fn()} onClose={vi.fn()} />);
+    const close = screen.getByRole("button", { name: "Close wallet chooser" });
+    expect(document.activeElement).toBe(close);
+    await userEvent.tab();
+    expect(document.activeElement).toBe(close);
+    await userEvent.tab({ shift: true });
+    expect(document.activeElement).toBe(close);
+  });
+
+  it("retains focus while every control is disabled during connection", async () => {
+    const onClose = vi.fn();
+    const props = { choices: [{ id: "injected", name: "Browser wallet", type: "injected" }], onChoose: vi.fn(), onClose };
+    const { rerender } = render(<WalletChooser {...props} connecting={false} />);
+    rerender(<WalletChooser {...props} connecting />);
+    const dialog = screen.getByRole("dialog");
+    expect(document.activeElement).toBe(dialog);
+    await userEvent.tab();
+    expect(document.activeElement).toBe(dialog);
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).not.toHaveBeenCalled();
+    rerender(<WalletChooser {...props} connecting={false} />);
+    await userEvent.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close wallet chooser" }));
+  });
+
   it("presents separate browser and mobile connection paths", async () => {
     const onChoose = vi.fn();
     render(<WalletChooser
