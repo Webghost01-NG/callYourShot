@@ -16,6 +16,7 @@ const runtimeMocks = vi.hoisted(() => ({
   loadPublicProfile: vi.fn(),
   getProvider: vi.fn(),
   close: vi.fn(),
+  switchChain: vi.fn(),
 }));
 
 const socialRepositoryMocks = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ const socialRepositoryMocks = vi.hoisted(() => ({
 const configMocks = vi.hoisted(() => ({
   socialEnabled: false,
   walletClientReady: true,
+  chainId: 50_312,
 }));
 
 vi.mock("../../src/app/config.js", () => ({
@@ -49,13 +51,13 @@ vi.mock("../../src/social/config.js", () => ({
 vi.mock("wagmi", () => ({
   useAccount: () => ({
     address: account,
-    chainId: 50_312,
+    chainId: configMocks.chainId,
     connector: { id: "walletConnect", getProvider: runtimeMocks.getProvider },
     isConnected: true,
   }),
   useConnect: () => ({ connectors: [], connectAsync: vi.fn(), isPending: false }),
   useDisconnect: () => ({ disconnect: vi.fn() }),
-  useSwitchChain: () => ({ switchChainAsync: vi.fn() }),
+  useSwitchChain: () => ({ switchChainAsync: runtimeMocks.switchChain }),
   useWalletClient: () => ({ data: configMocks.walletClientReady
     ? { account: { address: account }, chain: { id: 50_312 } } as WalletClient
     : undefined }),
@@ -165,6 +167,8 @@ describe("wallet transaction lifecycle", () => {
       profile: { state: "empty", skillScore: null, settledCount: 0, rounds: [] },
     });
     runtimeMocks.getProvider.mockReset();
+    runtimeMocks.switchChain.mockReset();
+    configMocks.chainId = 50_312;
     runtimeMocks.close.mockReset();
     socialRepositoryMocks.authenticatedWallet.mockReset().mockResolvedValue(account);
     socialRepositoryMocks.listProfiles.mockReset().mockResolvedValue([]);
@@ -173,6 +177,22 @@ describe("wallet transaction lifecycle", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it.each([
+    [{ cause: { code: 4001 } }, /Network switch cancelled/],
+    [new Error("RPC details: private provider dump"), /Could not switch networks/],
+  ])("explains a failed network change without preparing or sending an order", async (error, message) => {
+    configMocks.chainId = 114;
+    runtimeMocks.switchChain.mockRejectedValue(error);
+    render(<App />);
+    await userEvent.click(await screen.findByRole("button", { name: "Review UP call" }, { timeout: 5000 }));
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(runtimeMocks.switchChain).toHaveBeenCalledWith({ chainId: 50312 });
+    expect(runtimeMocks.prepareOrder).not.toHaveBeenCalled();
+    expect(runtimeMocks.sendPlan).not.toHaveBeenCalled();
+    expect(screen.queryByText(/private provider dump/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Review UP call" }).hasAttribute("disabled")).toBe(false);
   });
 
   it("renders a concise first-approval cancellation without provider internals", async () => {

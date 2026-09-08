@@ -21,6 +21,13 @@ and receipt links. See [release validation](RELEASE_VALIDATION.md) and
 
 ## Implemented protections
 
+- Cancelled add-network/switch-network requests display a Somnia-specific recovery
+  message instead of the generic provider-error fallback. Other switch failures
+  explain how to select Somnia manually. Component tests verify that both paths
+  stop before order preparation or submission and restore the review action.
+  Owner screenshots confirm the original cancellation returned control while
+  staying on Flare; successful wrong-network recovery still needs owner confirmation.
+
 - Wallet connection cancellation/failure and success use a dismissible page-wide
   status notice, not the trading panel's order state. September 8 owner screenshots
   exposed the misleading order message after connection rejection; the regression

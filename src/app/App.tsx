@@ -115,7 +115,15 @@ export async function resolveReviewWallet({
   getSomniaProvider,
 }: ReviewWalletInput): Promise<WalletClient> {
   if (!currentAddress) throw new Error("Connect a wallet before reviewing your call.");
-  if (currentChainId !== somniaShannon.id) await switchToSomnia();
+  if (currentChainId !== somniaShannon.id) {
+    try {
+      await switchToSomnia();
+    } catch (error) {
+      throw new Error(isUserRejectedRequest(error)
+        ? "Network switch cancelled. Switch to Somnia Testnet to continue. No approval or order was submitted by this review."
+        : "Could not switch networks. Select Somnia Testnet in your wallet, then review your call again. No approval or order was submitted by this review.");
+    }
+  }
 
   if (
     walletClient?.account?.address.toLowerCase() === currentAddress.toLowerCase()

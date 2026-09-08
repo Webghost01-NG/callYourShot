@@ -14,6 +14,8 @@ is not claimed. A wallet's built-in browser may provide an injected connection,
 but must be tested separately. Re-enable QR only after an end-to-end acceptance run.
 Connection cancellation and success have page-wide feedback, separate from order
 status, so cancelling a connection is not presented as a cancelled trade.
+Cancelling a network change explains that Somnia Testnet is required and leaves
+the review available to retry; it does not proceed to approval or an order.
 
 ![Current production UI: persistent desktop navigation, editorial introduction, and live DreamDEX workspace](public/media/production-workspace.png)
 
