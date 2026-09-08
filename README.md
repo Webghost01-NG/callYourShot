@@ -33,7 +33,7 @@ ranking; they do not eliminate luck, correlated calls, or multiple-wallet select
 
 Pick a live event, call **YES or NO**, and set the most you can lose. DreamDEX
 executes the real trade and Somnia settles the result. Call Your Shot turns that
-public evidence into a skill record, so friends can compete on decision quality
+public evidence into a prediction-performance record, so friends can compare outcomes
 instead of wallet size—and nobody can upload a screenshot or spend more to buy
 a better rank.
 
@@ -90,7 +90,7 @@ flowchart LR
   W --> F[Decoded OrderFilled]
   F --> R[RPC receipt + exact order<br/>ownership and side proof]
   R --> S[Finalized Event Contract<br/>+ oracle evidence]
-  S --> P[Deterministic skill record]
+  S --> P[Deterministic performance record]
   P --> L[Receipts, challenges,<br/>leaderboard]
   DB[(Supabase)] -. identity, invitations,<br/>optional evidence cache .-> L
   L --> C
@@ -108,6 +108,11 @@ enrollment time and wallet address. A partial cycle is labeled a verified
 subset; whole-league language appears only after every enrollment reconciles
 successfully. Self-published score snapshots are compared only after membership
 selection and can never crowd another wallet out of the board.
+
+Cohorts advance automatically, at most 24 profiles at a time, with pause/resume
+and manual controls. A completed cycle stops; failed reads are not retried
+indefinitely. Progress is page-local and restarts on reload. This removes manual
+batch-advancing, not the RPC cost of verifying a large league.
 
 ## DreamDEX depth
 
@@ -160,8 +165,8 @@ npm run dev
 ```
 
 Provide the organizer-approved public DreamDEX operator and venue values in
-`.env.local`. Mobile/QR wallets additionally require a real public Reown project
-ID. The optional social league requires the public Supabase URL and publishable
+`.env.local`. Use an injected browser wallet. QR pairing is suspended in code;
+setting a Reown project ID does not enable it. The optional social league requires the public Supabase URL and publishable
 key after applying the committed migrations. Never place a private key,
 service-role key, or seed phrase in browser configuration.
 
