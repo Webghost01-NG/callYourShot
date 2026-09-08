@@ -21,6 +21,12 @@ and receipt links. See [release validation](RELEASE_VALIDATION.md) and
 
 ## Implemented protections
 
+- Wallet connection cancellation/failure and success use a dismissible page-wide
+  status notice, not the trading panel's order state. September 8 owner screenshots
+  exposed the misleading order message after connection rejection; the regression
+  test now exercises cancellation followed by a successful connection retry.
+  This does not count as approval/order rejection or network-switch acceptance.
+
 - Current-round snapshots are periodically rebuilt instead of depending on an
   uninterrupted event stream.
 - Live discovery is bounded and paginated across binary assets and cadences;

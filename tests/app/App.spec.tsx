@@ -11,12 +11,13 @@ const runtimeMocks = vi.hoisted(() => ({
   refreshRound: vi.fn(),
   close: vi.fn(),
 }));
+const connectionMocks = vi.hoisted(() => ({ connect: vi.fn(), provider: vi.fn() }));
 
 vi.mock("wagmi", () => ({
   useAccount: () => ({ address: undefined, chainId: undefined, isConnected: false }),
   useConnect: () => ({
-    connectors: [{ id: "injected", name: "Browser wallet", type: "injected", getProvider: vi.fn() }],
-    connectAsync: vi.fn(),
+    connectors: [{ id: "injected", name: "Browser wallet", type: "injected", getProvider: connectionMocks.provider }],
+    connectAsync: connectionMocks.connect,
     isPending: false,
   }),
   useDisconnect: () => ({ disconnect: vi.fn() }),
@@ -75,6 +76,8 @@ function liveRound(
 
 describe("live round resilience", () => {
   beforeEach(() => {
+    connectionMocks.connect.mockReset();
+    connectionMocks.provider.mockReset();
     vi.stubEnv("VITE_DREAMDEX_OPERATOR_ID", "2");
     vi.stubEnv("VITE_DREAMDEX_VENUE_ID", `0x${"2".repeat(64)}`);
     vi.stubEnv("VITE_SUPABASE_URL", "");
@@ -140,6 +143,22 @@ describe("live round resilience", () => {
 
     expect(await screen.findByText(/indexer behind RPC by 10501 blocks/i)).toBeTruthy();
     expect(screen.getByText(/every market rechecked on-chain/i)).toBeTruthy();
+  });
+
+  it("reports cancellation globally without an order error, then reports a successful retry", async () => {
+    connectionMocks.connect.mockRejectedValueOnce({ code: 4001 });
+    render(<App />);
+    await userEvent.click(screen.getByRole("button", { name: "Connect wallet" }));
+    await userEvent.click(screen.getByRole("button", { name: /Browser wallet.*wallet extension/i }));
+    expect(await screen.findByText(/Wallet connection cancelled/)).toBeTruthy();
+    expect(screen.queryByText("Order cancelled")).toBeNull();
+    connectionMocks.connect.mockResolvedValueOnce({ accounts: [`0x${"1".repeat(40)}`], chainId: 50312 });
+    connectionMocks.provider.mockResolvedValue({ request: vi.fn() });
+    await userEvent.click(screen.getByRole("button", { name: "Connect wallet" }));
+    expect(screen.queryByText(/Wallet connection cancelled/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /Browser wallet.*wallet extension/i }));
+    expect(await screen.findByText(/Wallet connected: 0x1111/)).toBeTruthy();
+    expect(screen.queryByText("Order cancelled")).toBeNull();
   });
 
   it("opens an explicit wallet chooser from the header connection action", async () => {

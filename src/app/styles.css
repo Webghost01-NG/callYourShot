@@ -123,6 +123,25 @@ button:focus-visible, input:focus-visible, a:focus-visible {
 .network-badge i { background: var(--lime); box-shadow: 0 0 10px rgba(186, 255, 60, .7); }
 .wallet-button { color: var(--ink); }
 .wallet-button:hover { border-color: var(--line-bright); }
+.connection-notice {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  width: min(420px, calc(100vw - 32px));
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #9ed65a;
+  border-radius: 16px;
+  background: #152018;
+  color: #f1f4e9;
+  box-shadow: 0 8px 32px #0006;
+}
+.connection-notice p { margin: 0; font-size: 14px; line-height: 1.5; }
+.connection-notice button { flex: 0 0 32px; min-height: 32px; color: inherit; background: transparent; border: 1px solid #62705f; border-radius: 8px; }
+
 .wallet-dialog-backdrop {
   position: fixed;
   inset: 0;
