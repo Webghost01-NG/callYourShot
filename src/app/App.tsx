@@ -183,6 +183,7 @@ export function App() {
   const [now, setNow] = useState(Date.now());
   const [runtimeGeneration, setRuntimeGeneration] = useState(0);
   const [walletChooserOpen, setWalletChooserOpen] = useState(false);
+  const [connectionNotice, setConnectionNotice] = useState<string>();
   const walletChooserTrigger = useRef<HTMLElement | null>(null);
   const roundRequestId = useRef(0);
   const marketLoadsInFlight = useRef(0);
@@ -524,6 +525,7 @@ export function App() {
   const collateralLabel = round?.collateralSymbol ?? "Collateral";
 
   async function requestWalletConnection(): Promise<ConnectedWallet | null> {
+    setConnectionNotice(undefined);
     if (isConnected) {
       const connectedConnector = activeConnector ?? connectors[0];
       if (connectedConnector) return connectWallet(connectedConnector.id);
@@ -545,12 +547,12 @@ export function App() {
       ? activeConnector
       : connectors.find((candidate) => candidate.id === connectorId);
     if (!connector) {
-      setTxError("That wallet connection is no longer available. Choose a wallet again.");
-      setTxState("failed");
-      setWalletChooserOpen(true);
+      setConnectionNotice("Wallet unavailable. Please choose a wallet again.");
+      closeWalletChooser();
       return null;
     }
     try {
+      setConnectionNotice(undefined);
       const connectedWallet = await resolveConnectedWallet({
         currentAddress: isConnected ? address : undefined,
         currentChainId: isConnected ? chainId : undefined,
@@ -563,10 +565,12 @@ export function App() {
         },
       });
       closeWalletChooser();
+      setConnectionNotice(`Wallet connected: ${shortAddress(connectedWallet.address)}. Connecting does not submit a trade.`);
       return connectedWallet;
     } catch (error) {
-      setTxError(errorMessage(error));
-      setTxState("rejected");
+      setConnectionNotice(isUserRejectedRequest(error)
+        ? "Wallet connection cancelled. No trade was submitted by this connection request. You can connect again when ready."
+        : "Wallet connection failed. Please unlock your wallet and try connecting again.");
       closeWalletChooser();
       return null;
     }
@@ -615,13 +619,23 @@ export function App() {
           <div className="rail-note"><span className="micro-label">Built on evidence</span><p>Your call.<br />Your receipt.<br />Your reputation.</p><small>Powered by DreamDEX<br />on Somnia testnet</small></div>
           <div className="header-actions">
             <span className="network-badge"><i />Somnia testnet</span>
-            <button className="wallet-button" onClick={() => isConnected ? disconnect() : void requestWalletConnection()} disabled={isConnecting}>
+            <button className="wallet-button" onClick={() => {
+              if (isConnected) { setConnectionNotice(undefined); disconnect(); }
+              else void requestWalletConnection();
+            }} disabled={isConnecting}>
               <span className={isConnected ? "status-dot connected" : "status-dot"} />
               {isConnecting ? "Connecting…" : shortAddress(address)}
             </button>
           </div>
         </div>
       </header>
+
+      {connectionNotice && (
+        <aside className="connection-notice" aria-label="Wallet connection feedback">
+          <p role="status">{connectionNotice}</p>
+          <button type="button" aria-label="Dismiss wallet connection feedback" onClick={() => setConnectionNotice(undefined)}>×</button>
+        </aside>
+      )}
 
       {walletChooserOpen && (
         <WalletChooser

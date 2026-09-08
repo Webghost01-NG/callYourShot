@@ -12,6 +12,8 @@ Connection availability: use an injected browser wallet. WalletConnect QR pairin
 is temporarily disabled after repeated blank pairing panels; mobile/QR acceptance
 is not claimed. A wallet's built-in browser may provide an injected connection,
 but must be tested separately. Re-enable QR only after an end-to-end acceptance run.
+Connection cancellation and success have page-wide feedback, separate from order
+status, so cancelling a connection is not presented as a cancelled trade.
 
 ![Current production UI: persistent desktop navigation, editorial introduction, and live DreamDEX workspace](public/media/production-workspace.png)
 
