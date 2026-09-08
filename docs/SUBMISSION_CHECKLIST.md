@@ -38,14 +38,14 @@ buy a higher score.
 - [x] Accepted two-wallet challenge with two independent DreamDEX fills
 - [x] SDK/documentation feedback
 - [ ] Final two-to-three-minute demo video URL
-- [ ] Real two-wallet challenge comparison from invitation through settlement
+- [x] Real two-wallet challenge comparison from invitation through settlement
 - [ ] Mobile/QR acceptance evidence — QR pairing is currently suspended; not claimed as supported
 - [x] Owner-approved MIT repository license
 - [x] Owner-approved Node 22 continuous-integration workflow
 
 The checked items are directly inspectable in the repository. The challenge's
-two-call activation is complete, but its separate terminal-comparison item stays
-unchecked until the shared Event Contract genuinely finalizes. The remaining
+two-call activation and terminal comparison are complete. Production also passed
+rematch navigation; a second played rematch is not claimed. The remaining
 items require owner-controlled accounts or publishing and must remain unchecked
 until completed.
 

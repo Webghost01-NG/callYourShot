@@ -1,11 +1,12 @@
 # Ecosystem growth-loop validation
 
-Status date: 2026-09-07
+Status date: 2026-09-08
 
 The product path is implemented and automatically tested. Real two-wallet
 activation is now proven: one accepted production challenge has two distinct,
-receipt-verified DreamDEX fills in its exact Event Contract. Terminal comparison
-and rematch evidence remain pending until that Event Contract finalizes.
+receipt-verified DreamDEX fills in its exact Event Contract. Production now
+shows the terminal comparison and rematch navigation. A second played challenge
+and independent customer retention are not claimed.
 
 ## The smallest credible loop
 
@@ -75,23 +76,23 @@ This table records only evidence independently reconstructed on 2026-09-07:
 | Challenge URL | [Accepted production challenge](https://call-your-shot-six.vercel.app/?challenge=88e5c960-fbec-4942-b6f0-697cbc83572a) |
 | Wallet A fill transaction | [`0x513283…c1a35`](https://shannon-explorer.somnia.network/tx/0x513283975ac8d098a49155411651e364a85e38f88c75e2163b2534caa53c1a35) — creator UP |
 | Wallet B fill transaction | [`0x2d8f0b…8f986`](https://shannon-explorer.somnia.network/tx/0x2d8f0b62cdec9ba92dc5f6d8ce064c721e3f51110909806980b369df0008f986) — invitee DOWN |
-| Event Contract finalization | Not available at the latest live check; SDK `getSettlement(0x…15779)` returned `null` |
-| Wallet A result link verified | Awaiting genuine settlement; production displays Higher · awaiting result |
-| Wallet B result link verified | Awaiting genuine settlement; production displays Lower · awaiting result |
-| Rematch route verified | Not yet available for this nonterminal challenge; verify after settlement |
+| Event Contract finalization | [Successful finalization evidence](https://shannon-explorer.somnia.network/tx/0x7f50020633ff91c551ded80659cdd8c8c1b339b61095964ace5deb272be32c58); SDK reports finalized, not voided, winning outcome 1 |
+| Wallet A result link verified | Production: Higher · lost; links to the finalization above |
+| Wallet B result link verified | Production: Lower · won; links to the same finalization |
+| Rematch route verified | Clicked on production, opened `?inviteWallet=0xD1819994E1DB34Cd2BA460607E248B4c6d3925c7#league-identity`, prefilled the creator wallet and discovered a current BTC 1h market |
 
 The challenge row is accepted and binds wallets `0xd181…25c7` and
-`0xf400…c9a5` to Event Contract `0x…15779`. Both calls currently reconcile as
-pending, so neither is assigned points and the remaining rows intentionally stay
-incomplete until real finalization.
+`0xf400…c9a5` to Event Contract `0x…15779`. Production declares the invitee's
+Lower call stronger, based on the genuine settled outcome.
 
 ### Latest production acceptance check
 
-On 2026-09-07, after deployment of `4236cda`, the signed-out public challenge
-loaded both participant fills and the notice “Both calls are locked · waiting
-for DreamDEX settlement.” Both **Verify fill** links are present. The read-only
-SDK settlement lookup returned `null`; no result or rematch was fabricated.
-Issue #50 remains open. Its next action is to revisit this same link after
-finalization, verify both result receipts, and exercise the participant rematch
-path into a different live market. This is not evidence of independent customer
-adoption or a completed repeat interaction.
+On 2026-09-08, after deployment of `aebe490`, the signed-out production challenge
+displayed both terminal results and both fill/result links. A fresh navigation
+reconstructed the completed comparison in 15.038 seconds. The rematch button
+opened the invite route, prefilled the expected wallet, and selected a current
+BTC 1h market rather than reusing the settled daily challenge. No wallet was
+impersonated and no new invitation or trade was signed during this read-only
+check. This verifies rematch navigation, not a second played round or retention.
+
+![Completed production two-wallet comparison](../public/media/completed-challenge.png)
