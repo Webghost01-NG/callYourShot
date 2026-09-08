@@ -93,21 +93,24 @@ and receipt links. See [release validation](RELEASE_VALIDATION.md) and
 - Production dependency audit with zero reported vulnerabilities at the time of
   this pass.
 
-## Remaining owner-operated verification
+## Final owner acceptance — September 8, 2026
 
-These cannot be honestly marked complete by automated fixtures:
+After production PR #90, the owner confirmed “all done, checked” for the final
+requested pass: updated network-cancellation feedback, successful Somnia network
+recovery, account switching invalidating an open review, and market rollover
+preventing an expired-round trade. These are owner-reported manual results, not
+independently captured browser traces. Earlier owner screenshots demonstrate
+connection cancellation/retry and bounded approval cancellation.
 
-- wallet rejection, wrong-network recovery, account switching during review,
-  and a live rollover in the target browser wallet;
-- a full physical-device wallet pass (QR is suspended);
-- an authenticated cross-wallet RLS-denial exercise and a second played rematch.
+This completes the remaining target-wallet release gate for #8. Terminal
+comparison and rematch navigation are verified in production (#50), and the
+timed walkthrough is published (#49). The latest application suite passes 67
+Node and 89 Vitest tests (156 total), with typecheck/build and CI passing.
 
-Terminal comparison and rematch navigation are now verified in production (#50),
-and the timed production walkthrough is published (#49). Neither substitutes for
-the wallet-edge-case tests above. Those remain residual testnet risks, not passed
-manual checks or claims of an audited production release. Keep #8 open until the
-remaining target-wallet acceptance is recorded or the owner explicitly narrows
-the supported release scope.
+This confirmation does not establish physical-device/QR acceptance, an
+authenticated cross-wallet RLS-denial test, or a second played rematch. QR stays
+suspended; those broader checks and external risks remain disclosed rather than
+being inferred from the owner's final confirmation.
 
 Real React-originated fills, desktop/mobile rendering, Web3 authentication,
 anonymous reads, owner writes, invited-wallet acceptance, two independent

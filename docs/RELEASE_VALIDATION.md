@@ -123,7 +123,13 @@ chain state and a real book, and the measured lag is visible. An indexer
 materially ahead of the selected RPC still fails closed. This does not claim a
 successful live trade or hide upstream lag.
 
-## Outstanding owner-operated acceptance
+## Owner acceptance and remaining scope limits
+
+On September 8, after PR #90, the owner confirmed the requested network-change
+cancellation/recovery, account-switch invalidation, and live-rollover checks.
+Connection and approval cancellation were also demonstrated in owner screenshots.
+This is owner-reported acceptance; no new transaction hashes or independent traces
+are claimed. The current application suite passes 156 tests with typecheck/build.
 
 - If QR is restored, verify mobile handoff and desktop QR before claiming support.
 - Publish one authenticated snapshot from the production UI and confirm the
@@ -132,8 +138,7 @@ successful live trade or hide upstream lag.
   `aebe490`; a genuinely played repeat round remains optional adoption evidence.
 - Retain a separate real two-wallet cross-wallet RLS-denial acceptance check;
   successful acceptance alone does not prove every denial path.
-- Exercise wallet rejection, wrong-network recovery, account switching during
-  review, keyboard-only prediction entry, and a live round rollover.
+- A comprehensive keyboard-only signing journey is not independently recorded.
 - The 2:40 production walkthrough and settled-evidence rehearsal are published
   in the media release. A newly signed transaction is not part of that recording.
   The owner must still confirm the submission form and any streaming-host requirement.

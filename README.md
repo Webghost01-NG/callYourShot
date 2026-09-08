@@ -38,6 +38,9 @@ and on-screen captions make this distinction explicit.
 The [final hardening report](docs/HARDENING_REPORT.md) records automated checks,
 responsive production verification, and remaining wallet/device testing risks.
 This is a testnet demonstration, not audited production trading software.
+Final network-recovery, account-switch, and rollover acceptance was confirmed by
+the owner on September 8, 2026; the application suite passes 156 tests. See the
+report for the distinction between owner confirmation and independently recorded evidence.
 
 The score records realized prediction performance, not proof of persistent human
 identity or conclusive forecasting skill. Ten settlements qualify a profile for
