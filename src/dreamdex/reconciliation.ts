@@ -136,6 +136,8 @@ export interface ProfileChainEvidenceReader {
 }
 
 export interface ProfileCriteria {
+  /** Optional exact-market projection for public challenge evidence only. */
+  marketId?: Hex;
   asset?: string;
   intervalSec?: number;
   origin: VenueOrigin;
@@ -469,6 +471,7 @@ export class DreamDexProfileReconciler {
     const grouped = new Map<string, IndexedProfileFill[]>();
     for (const row of rows) {
       if (!BYTES32.test(row.market)) continue;
+      if (criteria.marketId && row.market.toLowerCase() !== criteria.marketId.toLowerCase()) continue;
       const key = row.market.toLowerCase();
       grouped.set(key, [...(grouped.get(key) ?? []), row]);
     }

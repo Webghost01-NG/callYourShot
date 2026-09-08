@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Address, Hex, WalletClient } from "viem";
@@ -364,6 +364,25 @@ describe("social competition panel", () => {
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toMatch(/Result verification is unavailable|DreamDEX evidence is temporarily unavailable/i);
     expect(screen.queryByText(/Rebuilding this claim/i)).toBeNull();
+  });
+
+  it("bounds a stalled challenge read and offers a read-only retry", async () => {
+    vi.useFakeTimers();
+    try {
+      repositoryMocks.listProfiles.mockResolvedValue([]);
+      repositoryMocks.getChallenge.mockImplementation(() => new Promise(() => {}));
+      render(<SocialPanel
+        config={{ supabaseUrl: "https://project.supabase.co", supabasePublishableKey: "sb_publishable_example" }}
+        configError={null} runtime={{ loadPublicProfile: vi.fn() } as never}
+        route={{ kind: "challenge", challengeId: "11111111-1111-4111-8111-111111111111" }}
+        connected={false} onConnect={async () => null}
+      />);
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+      expect(screen.getByText(/Challenge verification timed out/i)).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Retry challenge verification" })).toBeTruthy();
+      expect(screen.queryByText(/Rebuilding both records/i)).toBeNull();
+    } finally { cleanup(); vi.useRealTimers(); }
   });
 
   it("terminates a missing challenge instead of displaying an endless rebuild", async () => {

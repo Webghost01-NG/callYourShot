@@ -207,6 +207,7 @@ export function SocialPanel({
   const [challengeEvidence, setChallengeEvidence] = useState<ChallengeEvidence>();
   const [challengeState, setChallengeState] = useState<SharedLoadState>(route.kind === "challenge" ? "loading" : "idle");
   const [challengeError, setChallengeError] = useState<string>();
+  const [challengeRetry, setChallengeRetry] = useState(0);
   const [receiptRound, setReceiptRound] = useState<ProfileRound>();
   const [receiptState, setReceiptState] = useState<SharedLoadState>(route.kind === "receipt" ? "loading" : "idle");
   const [receiptError, setReceiptError] = useState<string>();
@@ -329,7 +330,7 @@ export function SocialPanel({
 
   useEffect(() => {
     if (!repository || !runtime) return;
-    if (state === "error") {
+    if (!profilesLoaded && state === "error") {
       if (route.kind === "challenge") {
         setChallengeError("Challenge verification is unavailable because the public league could not be loaded.");
         setChallengeState("error");
@@ -338,10 +339,16 @@ export function SocialPanel({
     }
     if (!profilesLoaded) return;
     let active = true;
+    let deadline: ReturnType<typeof setTimeout> | undefined;
     if (route.kind === "challenge") {
       setChallengeEvidence(undefined);
       setChallengeError(undefined);
       setChallengeState("loading");
+      deadline = setTimeout(() => {
+        active = false;
+        setChallengeError("Challenge verification timed out. Retry the read; no wallet transaction will be submitted.");
+        setChallengeState("error");
+      }, 60_000);
       void repository.getChallenge(route.challengeId).then(async (challenge) => {
         if (!challenge) {
           if (active) setChallengeState("not-found");
@@ -350,16 +357,14 @@ export function SocialPanel({
         const creatorEnrollment = enrollmentByWallet.get(challenge.creatorWallet.toLowerCase());
         const opponentEnrollment = enrollmentByWallet.get(challenge.invitedWallet.toLowerCase());
         if (!creatorEnrollment) throw new Error("The challenge creator is no longer enrolled.");
-        const creator = await runtime.loadPublicProfile(
-          challenge.creatorWallet,
-          enrollmentStart(creatorEnrollment),
-        );
-        const opponent = opponentEnrollment
-          ? await runtime.loadPublicProfile(
+        const [creator, opponent] = await Promise.all([
+          runtime.loadPublicProfile(challenge.creatorWallet, enrollmentStart(creatorEnrollment), challenge.marketId),
+          opponentEnrollment ? runtime.loadPublicProfile(
               challenge.invitedWallet,
               enrollmentStart(opponentEnrollment),
-            )
-          : null;
+              challenge.marketId,
+            ) : Promise.resolve(null),
+        ]);
         if (active) {
           setChallengeEvidence({
             challenge,
@@ -373,10 +378,10 @@ export function SocialPanel({
           setChallengeError(errorMessage(cause));
           setChallengeState("error");
         }
-      });
+      }).finally(() => clearTimeout(deadline));
     }
-    return () => { active = false; };
-  }, [enrollmentByWallet, profilesLoaded, repository, route, runtime, state]);
+    return () => { active = false; clearTimeout(deadline); };
+  }, [enrollmentByWallet, profilesLoaded, repository, route, runtime, challengeRetry, state === "error"]);
 
   useEffect(() => {
     if (!runtime || route.kind !== "receipt") return;
@@ -662,7 +667,7 @@ export function SocialPanel({
           <p className="eyebrow">Friend challenge</p>
           {challengeState === "loading" && <span aria-live="polite">Rebuilding both records from DreamDEX…</span>}
           {challengeState === "not-found" && <span role="status">This challenge was not found or is no longer available.</span>}
-          {challengeState === "error" && <span role="alert">{challengeError ?? "This challenge could not be verified."}</span>}
+          {challengeState === "error" && <><span role="alert">{challengeError ?? "This challenge could not be verified."}</span><button className="secondary" onClick={() => setChallengeRetry((value) => value + 1)}>Retry challenge verification</button></>}
           {challengeState === "ready" && challenge && challengeEvidence && <><h3>{shortAddress(challenge.creatorWallet)} vs {shortAddress(challenge.invitedWallet)}</h3><p>This app compares independent trades in one market and never escrows funds.</p><ChallengeLifecycleNotice lifecycle={challengeLifecycle!} result={challengeResult} creator={challenge.creatorWallet} opponent={challenge.invitedWallet} />{challengeMarketState === "checking" && <p className="shared-market-state" role="status">Checking whether this exact Event Contract is still tradable…</p>}{challengeMarketState === "live" && challengeLifecycle !== "completed" && <p className="shared-market-state live" role="status">Exact Event Contract found and selected. <a href="#arena">Go to the matching market ↓</a></p>}{challengeMarketState === "unavailable" && challengeLifecycle !== "completed" && <p className="shared-market-state unavailable" role="status">This exact Event Contract is not in the current lobby snapshot. Acceptance will re-check it directly; no replacement market will be selected.</p>}<div className="challenge-sides"><ChallengeSide round={challengeEvidence.creator} /><ChallengeSide round={challengeEvidence.opponent} /></div>{canAccept && (ownEnrollment ? <button className="primary" onClick={() => void acceptChallenge()} disabled={actionState === "working"}>{challengeMarketState === "live" ? "Accept with verified wallet" : "Re-check exact market and accept"}</button> : <p>Join the public league below, then accept this invitation.</p>)}{canCancel && <button className="secondary" onClick={() => void cancelChallenge()} disabled={actionState === "working"}>Cancel challenge</button>}{rematchLink && <a className="secondary rematch-link" href={rematchLink}>Challenge again on a live event</a>}</>}
         </article>
       )}
