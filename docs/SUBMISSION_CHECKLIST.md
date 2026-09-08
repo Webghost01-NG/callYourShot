@@ -37,7 +37,7 @@ buy a higher score.
 - [x] Verified leaderboard with two profiles above the ten-settlement threshold
 - [x] Accepted two-wallet challenge with two independent DreamDEX fills
 - [x] SDK/documentation feedback
-- [ ] Final two-to-three-minute demo video URL
+- [x] Public 2:40 demo video: [MP4 download](https://github.com/Webghost01-NG/callYourShot/releases/download/demo-2026-09-08/Call-Your-Shot-Live-Demo.mp4)
 - [x] Real two-wallet challenge comparison from invitation through settlement
 - [ ] Mobile/QR acceptance evidence — QR pairing is currently suspended; not claimed as supported
 - [x] Owner-approved MIT repository license
@@ -52,7 +52,11 @@ until completed.
 The README now leads with the redesigned production UI and explicitly separates
 the historical receipt screenshot from current product visuals. Browser-wallet
 connection is the supported demonstration path; do not demonstrate or promise
-the disabled QR connector. The final public video URL remains missing.
+the disabled QR connector. The [public media release](https://github.com/Webghost01-NG/callYourShot/releases/tag/demo-2026-09-08)
+includes the 2:40 video, chapter captions, PowerPoint, and PDF deck. The recording
+shows live UI and previously executed fill/settlement evidence, not a newly
+signed transaction. Confirm the submission form accepts a GitHub download link;
+if it requires a streaming host, upload this same MP4 there before submitting.
 
 ## Final DoraHacks pass
 
