@@ -55,6 +55,8 @@ describe("verified profile panel", () => {
   it("shows derived metrics, real fill proof, and missing-link states", () => {
     render(<ProfilePanel connected state="ready" result={result()} onRefresh={() => undefined} />);
     expect(screen.getByText("80.00")).toBeTruthy();
+    expect(screen.getByText("Performance score")).toBeTruthy();
+    expect(screen.getByText(/Ten settled calls are a ranking eligibility rule, not statistical validation/i)).toBeTruthy();
     expect(screen.getByText("Provisional · 9 more to rank")).toBeTruthy();
     expect(screen.getByText("1 of 10 settled calls verified")).toBeTruthy();
     expect(screen.getByRole("progressbar", { name: /qualification progress/i }).getAttribute("value")).toBe("1");

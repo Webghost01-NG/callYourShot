@@ -117,9 +117,11 @@ describe("social competition panel", () => {
       Array.from({ length: 24 }, (_, index) => `0x${(index + 1).toString(16).padStart(40, "0")}`),
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Verify next cohort" }));
+    await userEvent.click(screen.getByRole("button", { name: "Pause automatic verification" }));
+    expect(screen.getByText(/Automatic verification paused/i)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Resume automatic verification" }));
 
-    expect(await screen.findByText(/30 of 30 enrolled wallets checked/i)).toBeTruthy();
+    expect(await screen.findByText(/30 of 30 enrolled wallets checked/i, {}, { timeout: 4000 })).toBeTruthy();
     expect(screen.getByText("Whole-league verified leaderboard")).toBeTruthy();
     expect(loadPublicProfile).toHaveBeenCalledTimes(30);
     expect(new Set(loadPublicProfile.mock.calls.map(([wallet]) => wallet)).size).toBe(30);

@@ -39,7 +39,7 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
   const profile = result?.profile;
   const decimals = profile?.collateralDecimals ?? 6;
   const status = profile?.state === "verified"
-    ? "Verified"
+    ? "Rank eligible · receipts verified"
     : profile?.state === "provisional"
       ? `Provisional · ${VERIFIED_CALL_THRESHOLD - profile.settledCount} more to rank`
       : "No settled calls yet";
@@ -53,7 +53,7 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
         <span className="section-index">02</span>
         <div>
           <p className="eyebrow">Your public track record</p>
-          <h2 id="profile-title">Skill, backed by receipts.</h2>
+          <h2 id="profile-title">Performance, backed by receipts.</h2>
           <p>Every result below comes from your first real buy in an eligible Event Contract and its finalized outcome.</p>
         </div>
         {connected && <button className="secondary refresh-profile" onClick={onRefresh} disabled={state === "loading"}>Refresh record</button>}
@@ -78,7 +78,7 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
         <>
           <div className="profile-card">
             <div className="profile-score">
-              <span>Skill score</span>
+              <span>Performance score</span>
               <strong>{profile.skillScore ? formatRational(profile.skillScore) : "—"}</strong>
               <b className={`profile-badge ${profile.state}`}>{status}</b>
             </div>
@@ -97,7 +97,7 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
               <div>
                 <strong>{verifiedProgress} of {VERIFIED_CALL_THRESHOLD} settled calls verified</strong>
                 <span>{verifiedProgress === 0
-                  ? "Your first genuine settled call unlocks a provisional skill score."
+                  ? "Your first genuine settled call unlocks a provisional performance score."
                   : `${VERIFIED_CALL_THRESHOLD - verifiedProgress} more ${VERIFIED_CALL_THRESHOLD - verifiedProgress === 1 ? "call" : "calls"} to enter the verified leaderboard.`}</span>
               </div>
               <progress value={verifiedProgress} max={VERIFIED_CALL_THRESHOLD} aria-label="Verified leaderboard qualification progress" />
@@ -151,9 +151,10 @@ export function ProfilePanel({ connected, state, result, error, onRefresh }: Pro
           </div>
 
           <details className="formula-note">
-            <summary>How is skill calculated?</summary>
+            <summary>How is performance calculated?</summary>
             <p>Correct calls earn more when your entry price showed they were unlikely. Wrong calls lose more when your entry price showed high confidence. Every settled call has equal weight, so spending more cannot improve your rank. Voids do not count.</p>
           </details>
+          <p className="market-notice">Receipts verify trades, not lasting predictive skill. Ten settled calls are a ranking eligibility rule, not statistical validation. Luck, correlated predictions, selective participation, and multiple-wallet identity selection remain limitations.</p>
         </>
       )}
     </section>
