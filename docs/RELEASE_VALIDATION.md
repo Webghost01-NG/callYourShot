@@ -11,8 +11,9 @@ editorial hero, and QR-unavailable message. Validation included 66 Node tests,
 320, 390, 768, and 1440 pixels. The existing bundle-size warning remains.
 
 Current limitations: QR pairing is deliberately suspended; the final public
-video is missing; the recorded two-wallet challenge still awaits settlement and
-rematch acceptance. Both genuine fills and qualified profiles are already
+video is missing. After `aebe490`, production challenge comparison and rematch
+navigation passed; a fresh completed comparison loaded in 15.038 seconds.
+A second played rematch is not claimed. Both genuine fills and qualified profiles are already
 evidenced in [growth-loop validation](GROWTH_LOOP_VALIDATION.md). Do not treat
 the older no-trade/no-enrollment observations below as the current state.
 
@@ -115,8 +116,8 @@ successful live trade or hide upstream lag.
 - If QR is restored, verify mobile handoff and desktop QR before claiming support.
 - Publish one authenticated snapshot from the production UI and confirm the
   next refresh rebuilds its score from DreamDEX rather than trusting storage.
-- Complete settlement comparison and rematch for the already accepted, two-fill
-  production challenge; acceptance and app-originated fills are no longer missing.
+- Settlement comparison and rematch navigation passed on production after
+  `aebe490`; a genuinely played repeat round remains optional adoption evidence.
 - Retain a separate real two-wallet cross-wallet RLS-denial acceptance check;
   successful acceptance alone does not prove every denial path.
 - Exercise wallet rejection, wrong-network recovery, account switching during
