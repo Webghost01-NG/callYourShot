@@ -284,6 +284,19 @@ const criteria = {
   origin: { operatorId: 2, venueId },
 };
 
+test("exact challenge projection verifies only its market and preserves receipt proof", async () => {
+  const rows = [fill(), fill({ market: `0x${"b".repeat(64)}` as Hex })];
+  const requested: string[] = [];
+  const result = await new DreamDexProfileReconciler(
+    client(rows, { getBinaryMarket: async (id) => { requested.push(id); return indexedMarket(); } }),
+    async () => settlement(), chainEvidence([rows[0]!]), () => 1_000n,
+  ).reconcile(account, { ...criteria, marketId });
+  assert.equal(result.profile.rounds.length, 1);
+  assert.equal(result.profile.rounds[0]!.fillTransactionHash, fillHash);
+  assert.equal(result.profile.rounds[0]!.settlementTransactionHash, settlementHash);
+  assert.ok(requested.every((id) => id.toLowerCase() === marketId.toLowerCase()));
+});
+
 test("rebuilds a scored profile from fill, settlement, and oracle evidence", async () => {
   const rows = [fill()];
   const reconciler = new DreamDexProfileReconciler(

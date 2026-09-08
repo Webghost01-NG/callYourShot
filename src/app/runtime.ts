@@ -294,20 +294,21 @@ export class BrowserDreamDexRuntime {
     return this.reconcileProfile(account, walletClient);
   }
 
-  async loadPublicProfile(account: Address, minimumTimestampSec?: bigint) {
+  async loadPublicProfile(account: Address, minimumTimestampSec?: bigint, marketId?: Hex) {
     const connection = this.activeConnection;
     const readOnlyWallet = createWalletClient({
       account,
       chain: somniaShannon,
       transport: http(connection.bundle.httpRpcUrl),
     });
-    return this.reconcileProfile(account, readOnlyWallet, minimumTimestampSec);
+    return this.reconcileProfile(account, readOnlyWallet, minimumTimestampSec, marketId);
   }
 
   private async reconcileProfile(
     account: Address,
     walletClient: WalletClient,
     minimumTimestampSec?: bigint,
+    marketId?: Hex,
   ) {
     const connection = this.activeConnection;
     const adapter = this.adapter(walletClient, connection);
@@ -336,6 +337,7 @@ export class BrowserDreamDexRuntime {
     return reconciler.reconcile(account, {
       origin: { operatorId: this.config.operatorId, venueId: this.config.venueId },
       minimumTimestampSec,
+      marketId,
     });
   }
 
